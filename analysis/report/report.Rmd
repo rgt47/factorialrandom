@@ -2,7 +2,7 @@
 title: 'Matched-Tuple Randomization for Factorial Clinical
   Trial Designs: Theory and Application to Trial-Ready
   Cohorts'
-author: 'R.G. Thomas'
+author: 'Ronald G. Thomas, Ph.D.'
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 fontsize: 11pt
 geometry: 'left=3cm,right=5cm,top=2cm,bottom=2cm'
