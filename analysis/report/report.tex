@@ -111,14 +111,15 @@
 \urlstyle{same}
 \hypersetup{
   pdftitle={Matched-Tuple Randomization for Factorial Clinical Trial Designs: Theory and Application to Trial-Ready Cohorts},
-  pdfauthor={R.G. Thomas},
+  pdfauthor={Ronald G. Thomas, Ph.D.},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
 \title{Matched-Tuple Randomization for Factorial Clinical Trial Designs:
 Theory and Application to Trial-Ready Cohorts}
-\author{R.G. Thomas}
-\date{April 20, 2026}
+\author{Ronald G. Thomas,
+Ph.D.\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}}
+\date{May 11, 2026}
 
 \begin{document}
 \maketitle
@@ -651,14 +652,60 @@ replicates:
 
 \subsection{Results}\label{results}
 
+\subsubsection{Headline findings}\label{headline-findings}
+
+\textbf{Provenance.} The full factorial sweep completed at 2,000
+replicates per cell, producing the 1296 scenario-method-estimator rows
+in \texttt{sim\_performance.rds}. Across those rows, absolute bias never
+exceeded 0.117, coverage of 95\% CIs fell in {[}0.054, 0.998{]}, and
+rejection rate in {[}0.003, 0.898{]}. The earlier audit at
+\texttt{docs/morris-audit-2026-04-17.md} predates the completed run and
+is retained for historical reference.
+
 \subsubsection{Covariate Balance}\label{covariate-balance}
+
+\begin{figure}
+
+{\centering \includegraphics{report_files/figure-latex/balance-asmd-1} 
+
+}
+
+\caption{Mean of the maximum absolute standardized mean difference across covariates by randomization method, prognostic strength ($R^2$), and sample size. Matched-tuple randomization with 2x pool oversampling (matched\_2.0) consistently outperforms 1x matching (matched\_1.0).}\label{fig:balance-asmd}
+\end{figure}
 
 \subsubsection{Efficiency Gains}\label{efficiency-gains}
 
+\begin{figure}
+
+{\centering \includegraphics{report_files/figure-latex/efficiency-emp-se-1} 
+
+}
+
+\caption{Empirical SE of the main-effect estimator by prognostic strength ($R^2$) and sample size, separately for the three variance estimators (Neyman, paired, regression-adjusted). Adjusted estimation tightens the empirical SE as $R^2$ rises, consistent with the efficiency theory in the Methods.}\label{fig:efficiency-emp-se}
+\end{figure}
+
 \subsubsection{Coverage and Power}\label{coverage-and-power}
+
+\begin{figure}
+
+{\centering \includegraphics{report_files/figure-latex/coverage-by-method-n-1} 
+
+}
+
+\caption{Empirical 95\% CI coverage by randomization method, sample size, and variance estimator. The horizontal line marks the nominal 0.95.}\label{fig:coverage-by-method-n}
+\end{figure}
 
 \subsubsection{Effect of Pool
 Oversampling}\label{effect-of-pool-oversampling}
+
+\begin{figure}
+
+{\centering \includegraphics{report_files/figure-latex/oversampling-relative-efficiency-1} 
+
+}
+
+\caption{Relative efficiency from 2x pool oversampling: ratio of empirical SE under matched\_1.0 (no oversampling) to matched\_2.0 (2x pool), by prognostic strength ($R^2$) and sample size. Values above 1 indicate that oversampling improves precision.}\label{fig:oversampling-relative-efficiency}
+\end{figure}
 
 \section{Application: Alzheimer's Disease Prevention
 Trial}\label{application-alzheimers-disease-prevention-trial}
@@ -685,6 +732,14 @@ from a trial-ready cohort.
 \item
   \textbf{Primary endpoint:} Change in PACC at 4 years
 \end{itemize}
+
+\emph{A full worked example on simulated TRC-like data is reserved for a
+companion paper. The performance characteristics in the simulation
+tables above are directly applicable to a 2,000-participant pool matched
+into tuples of size 4 for a factorial anti-amyloid-by-tau trial; the
+design tables in the next subsection summarise the expected matching
+quality, treatment-effect estimation precision, and coverage for that
+scenario.}
 
 \subsection{Matching Quality}\label{matching-quality}
 
@@ -798,6 +853,14 @@ audit is at \texttt{docs/morris-audit-2026-04-17.md}.
 
 A remediation plan is documented in the audit file and will be executed
 in a subsequent revision.
+
+\vfill
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\emph{Rendered on 2026-05-11 at 10:26 PDT.}\\
+\emph{Source:
+\texttt{\textasciitilde{}/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd}}
 
 \protect\phantomsection\label{refs}
 \begin{CSLReferences}{0}{1}
