@@ -42,6 +42,8 @@ header-includes:
   - \linenumbers
   - \usepackage{booktabs}
   - \usepackage{float}
+  - \usepackage{setspace}
+  - \setstretch{1.1}
 ---
 
 ```{r setup, include=FALSE}
