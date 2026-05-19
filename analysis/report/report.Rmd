@@ -838,7 +838,7 @@ well matched.
 
 ## Future Work
 
-Several extensions merit investigation:
+Several extensions merit further investigation:
 
 - **Fractional factorials.** When $2^F$ is too large, a
   $2^{F-p}$ fractional factorial reduces $k$. Matched-tuple
@@ -856,7 +856,7 @@ Several extensions merit investigation:
 
 ## Morris et al. (2019) ADEMP Compliance
 
-This simulation study was audited against the reporting standards
+We audited this simulation study against the reporting standards
 proposed by Morris, White, and Crowther [-@morris2019using]. The full
 audit is at `docs/morris-audit-2026-04-17.md`.
 
@@ -868,8 +868,8 @@ audit is at `docs/morris-audit-2026-04-17.md`.
 - MCSE columns are computed but not wired into the report tables — TODO placeholders remain around `report.Rmd:605-649`.
 - `RNGkind('L\'Ecuyer-CMRG')` not pinned; no per-replicate `.Random.seed` snapshot stored.
 
-A remediation plan is documented in the audit file and will be
-executed in a subsequent revision.
+A remediation plan is recorded in the audit file and will be
+taken up in a subsequent revision.
 
 
 ```{r footer, echo=FALSE, results='asis'}
