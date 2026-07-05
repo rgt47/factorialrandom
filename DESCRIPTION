@@ -11,8 +11,12 @@ RoxygenNote: 7.2.0
 Imports:
     MASS
 Suggests:
+    dplyr,
+    ggplot2,
     here,
+    kableExtra,
     knitr,
     rmarkdown,
     rprojroot,
+    tidyr,
     tinytest
