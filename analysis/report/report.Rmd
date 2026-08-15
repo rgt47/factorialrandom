@@ -24,27 +24,28 @@ abstract: |
   matching. Software implementing the proposed methods is
   provided in the R package `factorialrandom`.
 output:
-  pdf_document:
+  bookdown::pdf_document2:
     latex_engine: xelatex
     toc: true
+    toc_depth: 2
     number_sections: true
     keep_tex: true
     highlight: tango
 fontsize: 11pt
-geometry: "left=3cm,right=5cm,top=2cm,bottom=2cm"
+linestretch: 1.1
+geometry: 'left=3cm,right=3cm,top=2.5cm,bottom=2.5cm'
 bibliography: references.bib
-knit: (function(input, ...) { d <- dirname(input); while (!file.exists(file.path(d, 'tools', 'stamp-render.R')) && d != dirname(d)) d <- dirname(d); source(file.path(d, 'tools', 'stamp-render.R'))$value(input) })
 csl: statistics-in-medicine.csl
 link-citations: true
 header-includes:
   - \usepackage{amsmath}
   - \usepackage{amssymb}
-  - \usepackage{lineno}
-  - \linenumbers
   - \usepackage{booktabs}
+  - \usepackage{longtable}
   - \usepackage{float}
-  - \usepackage{setspace}
-  - \setstretch{1.1}
+  - \usepackage[mathlines]{lineno}
+  - \linenumbers
+knit: (function(input, ...) { d <- dirname(input); while (!file.exists(file.path(d, 'tools', 'stamp-render.R')) && d != dirname(d)) d <- dirname(d); source(file.path(d, 'tools', 'stamp-render.R'))$value(input) })
 ---
 
 ```{r setup, include=FALSE}
@@ -871,14 +872,3 @@ audit is at `docs/morris-audit-2026-04-17.md`.
 
 A remediation plan is recorded in the audit file and will be
 taken up in a subsequent revision.
-
-
-```{r footer, echo=FALSE, results='asis'}
-src <- sub("^/Users/zenn/(Library/CloudStorage/)?Dropbox/prj/", "~/prj/",
-           knitr::current_input(dir = TRUE))
-cat(sprintf(
-  "\n\\vfill\n\n---\n\n*Rendered on %s.*  \n*Source: `%s`*\n",
-  format(Sys.time(), "%Y-%m-%d at %H:%M %Z"),
-  src
-))
-```
