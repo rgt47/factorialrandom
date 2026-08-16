@@ -5,7 +5,7 @@
   11pt,
 ]{article}
 \usepackage{xcolor}
-\usepackage[left=3cm,right=5cm,top=2cm,bottom=2cm]{geometry}
+\usepackage[left=3cm,right=3cm,top=2.5cm,bottom=2.5cm]{geometry}
 \usepackage{amsmath,amssymb}
 \setcounter{secnumdepth}{5}
 \usepackage{iftex}
@@ -28,6 +28,7 @@
   \usepackage[]{microtype}
   \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
+\usepackage{setspace}
 \makeatletter
 \@ifundefined{KOMAClassName}{% if non-KOMA class
   \IfFileExists{parskip.sty}{%
@@ -38,6 +39,19 @@
 }{% if KOMA class
   \KOMAoptions{parskip=half}}
 \makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{caption}
+\captionsetup[table]{skip=6pt}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
 \usepackage{graphicx}
 \makeatletter
 \newsavebox\pandoc@box
@@ -89,9 +103,51 @@
 \setlength{\emergencystretch}{3em} % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-\usepackage{amsmath,amssymb}
+%% tools/stamp.tex
+%% Provenance footer for PDFs rendered from this project.
+%% Vendored by zzcollab; this file is not project-specific. The
+%% footer prints the source document and the time of rendering.
+%% The git version is defined here too, and so is available to a
+%% project that wants it on the page, but it is left off the
+%% default footer: it already names the staged copy in share/ and
+%% appears in its manifest row. All values are supplied at render
+%% time by tools/stamp-render.R, which writes a small generated
+%% file that redefines the macros below. The \providecommand
+%% defaults keep a bare LaTeX compile working when the document is
+%% built without the wrapper.
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\providecommand{\stampsource}{\detokenize{(source not recorded)}}
+\providecommand{\stamptime}{(time not recorded)}
+\providecommand{\stampversion}{\detokenize{(version not recorded)}}
+\setlength{\footskip}{40pt}
+\newcommand{\stampfootcontent}{%
+  \footnotesize\color{gray}%
+  \parbox[b]{\textwidth}{%
+    \stamptime\hfill\thepage\\[2pt]%
+    \ttfamily\raggedright\stampsource}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\stampfootcontent}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+%% The title page uses the `plain` page style; redefine it so the
+%% stamp appears there too.
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\stampfootcontent}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0.4pt}}
+\renewcommand{\stampsource}{\textasciitilde{}/\allowbreak{}prj/\allowbreak{}res/\allowbreak{}16-factorial-matched-random/\allowbreak{}factorialrandom/\allowbreak{}analysis/\allowbreak{}report/\allowbreak{}report.Rmd}
+\renewcommand{\stamptime}{2026-08-15 16:43 PDT}
+\renewcommand{\stampversion}{\detokenize{3839f48}}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
+\usepackage{longtable}
 \usepackage{float}
+\usepackage[mathlines]{lineno}
+\linenumbers
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
@@ -109,133 +165,135 @@
 \usepackage{bookmark}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
+% fallback for those not using the hyperref driver hyperxmp:
+\makeatletter
+\@ifundefined{xmpquote}{\newcommand{\xmpquote}[1]{#1}}{}
+\makeatother
 \hypersetup{
   pdftitle={Matched-Tuple Randomization for Factorial Clinical Trial Designs: Theory and Application to Trial-Ready Cohorts},
   pdfauthor={Ronald G. Thomas, Ph.D.},
   hidelinks,
   pdfcreator={LaTeX via pandoc}}
 
-\title{Matched-Tuple Randomization for Factorial Clinical Trial Designs:
-Theory and Application to Trial-Ready Cohorts}
-\author{Ronald G. Thomas,
-Ph.D.\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}}
-\date{May 11, 2026}
+\title{Matched-Tuple Randomization for Factorial Clinical Trial Designs: Theory and Application to Trial-Ready Cohorts}
+\author{Ronald G. Thomas, Ph.D.\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}}
+\date{August 15, 2026}
 
 \begin{document}
 \maketitle
 \begin{abstract}
-Factorial clinical trial designs efficiently evaluate multiple treatment
-factors simultaneously, but covariate balance across the resulting
-treatment combinations is difficult to achieve through simple
-randomization, particularly in moderate sample sizes. We propose
-matched-tuple randomization, in which subjects are grouped into sets of
-\(k\) individuals with similar baseline covariate profiles -- where
-\(k\) equals the number of factorial treatment combinations -- and each
-member of a tuple is assigned to a distinct treatment arm. We derive the
-randomization distribution, variance estimators, and efficiency gains
-relative to simple and stratified randomization. A simulation study
-evaluates operating characteristics under scenarios motivated by
-Alzheimer's disease prevention trials, where trial-ready cohorts provide
-large pools of characterized subjects amenable to matching. Software
-implementing the proposed methods is provided in the R package
-\texttt{factorialrandom}.
+Factorial clinical trial designs efficiently evaluate
+multiple treatment factors simultaneously, but covariate
+balance across the resulting treatment combinations is
+difficult to achieve through simple randomization,
+particularly in moderate sample sizes. We propose
+matched-tuple randomization, in which subjects are grouped
+into sets of \(k\) individuals with similar baseline
+covariate profiles -- where \(k\) equals the number of
+factorial treatment combinations -- and each member of a
+tuple is assigned to a distinct treatment arm. We derive
+the randomization distribution, variance estimators, and
+efficiency gains relative to simple and stratified
+randomization. A simulation study evaluates operating
+characteristics under scenarios motivated by Alzheimer's
+disease prevention trials, where trial-ready cohorts
+provide large pools of characterized subjects amenable to
+matching. Software implementing the proposed methods is
+provided in the R package \texttt{factorialrandom}.
 \end{abstract}
 
 {
 \setcounter{tocdepth}{2}
 \tableofcontents
 }
+\setstretch{1.1}
 \section{Introduction}\label{introduction}
 
 \subsection{The Design Problem}\label{the-design-problem}
 
-Clinical trials increasingly evaluate combinations of treatments.
-Anti-amyloid plus anti-tau therapies in Alzheimer's disease, drug plus
-behavioral intervention in oncology supportive care, and multi-component
-public health programs all give rise to factorial treatment structures.
-A \(2 \times 2\) factorial design assigns subjects to one of four
-combinations: neither factor, factor A alone, factor B alone, or both.
-The hidden replication
-principle\textsuperscript{\citeproc{ref-fisherDesignExperiments1935}{1}}
-ensures that each subject contributes to the estimation of both main
-effects and their interaction, yielding the same precision as four
-separate experiments of the same total size.
+Clinical trials increasingly evaluate combinations of
+treatments. Anti-amyloid plus anti-tau therapies in
+Alzheimer's disease, drug plus behavioral intervention in
+oncology supportive care, and multi-component public health
+programs all give rise to factorial treatment structures. A
+\(2 \times 2\) factorial design assigns subjects to one of four
+combinations: neither factor, factor A alone, factor B alone,
+or both. The hidden replication principle\textsuperscript{\citeproc{ref-fisherDesignExperiments1935}{1}} ensures that each subject
+contributes to the estimation of both main effects and their
+interaction, yielding the same precision as four separate
+experiments of the same total size.
 
-The challenge lies in covariate balance. With four or more treatment
-arms, simple randomization can produce substantial imbalance on
-prognostic covariates, inflating variance and threatening the
-credibility of treatment comparisons. The problem is compounded in
-moderate sample sizes (\(n = 50\) to \(500\) per arm) typical of Phase
-II and prevention trials.
+The challenge lies in covariate balance. With four or more
+treatment arms, simple randomization can produce substantial
+imbalance on prognostic covariates, inflating variance and
+threatening the credibility of treatment comparisons. The
+problem is compounded in moderate sample sizes (\(n = 50\) to
+\(500\) per arm) typical of Phase II and prevention trials.
 
-\subsection{Covariate Balance
-Strategies}\label{covariate-balance-strategies}
+\subsection{Covariate Balance Strategies}\label{covariate-balance-strategies}
 
 Existing approaches to covariate balance -- stratified
 randomization\textsuperscript{\citeproc{ref-kernanStratifiedRandomization1999}{2}},
-minimization\textsuperscript{\citeproc{ref-pocockSequentialTreatment1975}{3}},
-and
-rerandomization\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}}
--- were developed primarily for two-arm trials. Stratification is
-limited to a few categorical covariates. Minimization extends to
-multiple covariates but operates sequentially as subjects enroll, which
-is unnecessary when the full pool is available at design time.
-Rerandomization accepts only allocations meeting a balance criterion but
-does not exploit the structure of factorial contrasts.
+minimization\textsuperscript{\citeproc{ref-pocockSequentialTreatment1975}{3}}, and
+rerandomization\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}} -- were developed
+primarily for two-arm trials. Stratification is limited to a
+few categorical covariates. Minimization extends to multiple
+covariates but operates sequentially as subjects enroll,
+which is unnecessary when the full pool is available at
+design time. Rerandomization accepts only allocations meeting
+a balance criterion but does not exploit the structure of
+factorial contrasts.
 
-Matched-pair randomization represents the most aggressive form of
-restricted
-randomization.\textsuperscript{\citeproc{ref-baiOptimalityMatchedPairDesigns2022}{5}}
+Matched-pair randomization represents the most aggressive form
+of restricted randomization.\textsuperscript{\citeproc{ref-baiOptimalityMatchedPairDesigns2022}{5}}
 proved that among all stratified designs with equal allocation
 probabilities, a specific matched-pair design achieves minimum
-asymptotic
-variance.\textsuperscript{\citeproc{ref-imaiVarianceIdentification2008}{6}}
-and\textsuperscript{\citeproc{ref-fogartyRegressionAssisted2018}{7}}
-developed the inferential framework. However, these results are
-restricted to \(k = 2\) arms.
+asymptotic variance.\textsuperscript{\citeproc{ref-imaiVarianceIdentification2008}{6}} and\textsuperscript{\citeproc{ref-fogartyRegressionAssisted2018}{7}} developed the inferential
+framework. However, these results are restricted to \(k = 2\)
+arms.
 
 \subsection{Trial-Ready Cohorts}\label{trial-ready-cohorts}
 
-The trial-ready cohort (TRC) paradigm, developed for Alzheimer's disease
-prevention research, pre-screens and characterizes large pools of
-potential trial participants. The TRC-PAD
-project\textsuperscript{\citeproc{ref-aisenTRCPADOverview2020}{8},\citeproc{ref-aisenTRCPADExperience2020}{9}}
-enrolled over 30,000 individuals in its web-based screening component
-and characterized approximately 2,000 in-person participants with
-cognitive testing, APOE genotyping, and amyloid biomarkers. The AHEAD
-3-45 study\textsuperscript{\citeproc{ref-rafiiAHEAD2023}{10}} and
-DIAN-TU
-platform\textsuperscript{\citeproc{ref-batemanDIAN2012}{11},\citeproc{ref-bateman2017DIANTU}{12}}
-draw on similar infrastructure.
+The trial-ready cohort (TRC) paradigm, developed for
+Alzheimer's disease prevention research, pre-screens and
+characterizes large pools of potential trial participants.
+The TRC-PAD project\textsuperscript{\citeproc{ref-aisenTRCPADOverview2020}{8},\citeproc{ref-aisenTRCPADExperience2020}{9}} enrolled over 30,000 individuals
+in its web-based screening component and characterized
+approximately 2,000 in-person participants with cognitive
+testing, APOE genotyping, and amyloid biomarkers. The
+AHEAD 3-45 study\textsuperscript{\citeproc{ref-rafiiAHEAD2023}{10}} and DIAN-TU platform\textsuperscript{\citeproc{ref-batemanDIAN2012}{11},\citeproc{ref-bateman2017DIANTU}{12}} draw on similar
+infrastructure.
 
-These characterized pools create an opportunity: when the full cohort is
-available before randomization, multivariate matching can be performed
-optimally rather than sequentially. The rich baseline phenotyping
-(amyloid PET, tau PET, cognitive composites, genetics) provides strong
-prognostic covariates, and the factorial treatment structures emerging
-in combination therapy trials create a natural demand for \(k > 2\)
-matching.
+These characterized pools create an opportunity: when the
+full cohort is available before randomization, multivariate
+matching can be performed optimally rather than sequentially.
+The rich baseline phenotyping (amyloid PET, tau PET, cognitive
+composites, genetics) provides strong prognostic covariates,
+and the factorial treatment structures emerging in combination
+therapy trials create a natural demand for \(k > 2\) matching.
 
 \subsection{Contribution}\label{contribution}
 
-We propose matched-tuple randomization for factorial designs. Subjects
-are grouped into tuples of size \(k\) (where \(k\) is the number of
-treatment combinations) based on multivariate baseline covariates, and
-treatment assignment is constrained so that each tuple member receives a
-distinct combination. We develop:
+We propose matched-tuple randomization for factorial designs.
+Subjects are grouped into tuples of size \(k\) (where \(k\) is
+the number of treatment combinations) based on multivariate
+baseline covariates, and treatment assignment is constrained
+so that each tuple member receives a distinct combination. We
+develop:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  Algorithms for forming matched \(k\)-tuples using Mahalanobis and
-  prognostic score distances.
+  Algorithms for forming matched \(k\)-tuples using
+  Mahalanobis and prognostic score distances.
 \item
-  Exact and asymptotic variance formulas for factorial effects under the
-  matched-tuple randomization distribution.
+  Exact and asymptotic variance formulas for factorial
+  effects under the matched-tuple randomization distribution.
 \item
-  A simulation study evaluating efficiency gains under scenarios
-  motivated by Alzheimer's disease prevention trials.
+  A simulation study evaluating efficiency gains under
+  scenarios motivated by Alzheimer's disease prevention
+  trials.
 \item
   An R package implementing the methods.
 \end{enumerate}
@@ -246,187 +304,193 @@ distinct combination. We develop:
 
 \subsubsection{Classical Framework}\label{classical-framework}
 
-\textsuperscript{\citeproc{ref-fisherDesignExperiments1935}{1}}
-introduced factorial experiments to evaluate multiple factors
-simultaneously. Consider \(F\) factors, each at two levels (\(+\) and
-\(-\)). The \(2^F\) factorial assigns subjects to all level
-combinations. Main effects and interactions are defined as signed
-averages of cell means. The key efficiency result is that every
-observation contributes to every estimable effect.
+\textsuperscript{\citeproc{ref-fisherDesignExperiments1935}{1}} introduced factorial experiments
+to evaluate multiple factors simultaneously. Consider \(F\)
+factors, each at two levels (\(+\) and \(-\)). The \(2^F\) factorial
+assigns subjects to all level combinations. Main effects and
+interactions are defined as signed averages of cell means. The
+key efficiency result is that every observation contributes to
+every estimable effect.
 
-\textsuperscript{\citeproc{ref-dasguptaCausalInference2015}{13}} recast
-factorial designs within the potential outcomes framework. For a \(2^2\)
-factorial, each subject has four potential outcomes
-\(Y_i(00), Y_i(10), Y_i(01), Y_i(11)\) corresponding to the four
-treatment combinations. The main effect of factor A is defined as:
+\textsuperscript{\citeproc{ref-dasguptaCausalInference2015}{13}} recast factorial designs within
+the potential outcomes framework. For a \(2^2\) factorial, each
+subject has four potential outcomes
+\(Y_i(00), Y_i(10), Y_i(01), Y_i(11)\) corresponding to the
+four treatment combinations. The main effect of factor A is
+defined as:
 \begin{equation}
   \tau_A = \frac{1}{N} \sum_{i=1}^{N}
     \left[ \frac{Y_i(10) + Y_i(11)}{2} -
            \frac{Y_i(00) + Y_i(01)}{2} \right]
-\end{equation} and analogously for factor B and the interaction \(AB\).
+\end{equation}
+and analogously for factor B and the interaction \(AB\).
 
-\subsubsection{Factorial Designs in Clinical
-Trials}\label{factorial-designs-in-clinical-trials}
+\subsubsection{Factorial Designs in Clinical Trials}\label{factorial-designs-in-clinical-trials}
 
-Factorial designs are increasingly used in clinical trials to evaluate
-combination therapies and multi-component
-interventions.\textsuperscript{\citeproc{ref-collinsMultiphaseOptimization2007}{14}}
-introduced the Multiphase Optimization Strategy (MOST), using factorial
+Factorial designs are increasingly used in clinical trials
+to evaluate combination therapies and multi-component
+interventions.\textsuperscript{\citeproc{ref-collinsMultiphaseOptimization2007}{14}} introduced
+the Multiphase Optimization Strategy (MOST), using factorial
 experiments to identify active intervention components.
 
-In Alzheimer's disease, the next generation of prevention trials is
-expected to combine mechanisms of action: anti-amyloid antibodies with
-anti-tau agents, secretase inhibitors with lifestyle interventions, or
-multiple doses of the same agent with and without an adjunct
-therapy\textsuperscript{\citeproc{ref-cummingsADTrialDesign2024}{15}}.
-These combinations create natural factorial structures.
+In Alzheimer's disease, the next generation of prevention
+trials is expected to combine mechanisms of action: anti-amyloid
+antibodies with anti-tau agents, secretase inhibitors with
+lifestyle interventions, or multiple doses of the same agent
+with and without an adjunct therapy\textsuperscript{\citeproc{ref-cummingsADTrialDesign2024}{15}}. These combinations create
+natural factorial structures.
 
 \subsection{Matched Randomization}\label{matched-randomization}
 
-\subsubsection{\texorpdfstring{Matched-Pair Designs
-(\(k = 2\))}{Matched-Pair Designs (k = 2)}}\label{matched-pair-designs-k-2}
+\subsubsection{\texorpdfstring{Matched-Pair Designs (\(k = 2\))}{Matched-Pair Designs (k = 2)}}\label{matched-pair-designs-k-2}
 
 In a matched-pair design, \(N\) subjects are grouped into \(M =
-N/2\) pairs based on baseline covariates, and within each pair, one
-subject is randomized to treatment and the other to control. The
-treatment effect estimator is: \begin{equation}
+N/2\) pairs based on baseline covariates, and within each pair,
+one subject is randomized to treatment and the other to
+control. The treatment effect estimator is:
+\begin{equation}
   \hat{\tau} = \frac{1}{M} \sum_{m=1}^{M}
     (Y_{m,T} - Y_{m,C})
-\end{equation} where \(Y_{m,T}\) and \(Y_{m,C}\) are the outcomes for
-the treated and control subjects in pair \(m\).
+\end{equation}
+where \(Y_{m,T}\) and \(Y_{m,C}\) are the outcomes for the treated
+and control subjects in pair \(m\).
 
-Under the matched-pair randomization distribution, the variance of
-\(\hat{\tau}\) is: \begin{equation}
+Under the matched-pair randomization distribution, the variance
+of \(\hat{\tau}\) is:
+\begin{equation}
   \text{Var}(\hat{\tau}) = \frac{1}{M^2} \sum_{m=1}^{M}
     \frac{(\tau_m - \bar{\tau})^2 +
           \text{Var}_m}{2}
-\end{equation} where \(\tau_m = Y_{m}(1) - Y_{m}(0)\) is the within-pair
-treatment effect and \(\text{Var}_m\) captures within-pair variability
-in potential outcomes.
+\end{equation}
+where \(\tau_m = Y_{m}(1) - Y_{m}(0)\) is the within-pair
+treatment effect and \(\text{Var}_m\) captures within-pair
+variability in potential outcomes.
 
-When pairs are well matched on prognostic covariates, the within-pair
-treatment effects \(\tau_m\) are similar to each other, and the first
-term is small. This is the source of precision gains.
+When pairs are well matched on prognostic covariates, the
+within-pair treatment effects \(\tau_m\) are similar to each
+other, and the first term is small. This is the source of
+precision gains.
 
 \subsubsection{Optimal Matching}\label{optimal-matching}
 
-\textsuperscript{\citeproc{ref-greevyOptimalMatching2004}{16}}
-formulated optimal multivariate matching as a minimum-cost network flow
-problem. For \(k = 2\), the problem reduces to minimum-weight perfect
-matching on a bipartite graph, solvable in \(O(N^3)\) time. The distance
-between subjects \(i\) and \(j\) is typically the Mahalanobis distance:
+\textsuperscript{\citeproc{ref-greevyOptimalMatching2004}{16}} formulated optimal multivariate
+matching as a minimum-cost network flow problem. For \(k = 2\),
+the problem reduces to minimum-weight perfect matching on a
+bipartite graph, solvable in \(O(N^3)\) time. The distance
+between subjects \(i\) and \(j\) is typically the Mahalanobis
+distance:
 \begin{equation}
   d(i,j) = \sqrt{(X_i - X_j)' S^{-1} (X_i - X_j)}
-\end{equation} where \(X_i\) is the covariate vector and \(S\) is the
-sample covariance matrix.
+\end{equation}
+where \(X_i\) is the covariate vector and \(S\) is the sample
+covariance matrix.
 
 \subsubsection{Rerandomization}\label{rerandomization}
 
-\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}} proposed
-rerandomization as an intermediate approach between simple randomization
-and deterministic matching. A randomization is accepted only if the
-Mahalanobis distance between treatment group covariate means falls below
-a threshold \(a\): \begin{equation}
+\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}} proposed rerandomization as an
+intermediate approach between simple randomization and
+deterministic matching. A randomization is accepted only if
+the Mahalanobis distance between treatment group covariate
+means falls below a threshold \(a\):
+\begin{equation}
   M = (\bar{X}_T - \bar{X}_C)' \hat{\text{cov}}(\bar{X}_T -
     \bar{X}_C)^{-1} (\bar{X}_T - \bar{X}_C) \le a
 \end{equation}
 
-\textsuperscript{\citeproc{ref-liRerandomizationAsymptotics2018}{17}}
-derived the asymptotic distribution of treatment effect estimators under
-rerandomization, showing it is a truncated normal with reduced variance.
+\textsuperscript{\citeproc{ref-liRerandomizationAsymptotics2018}{17}} derived the asymptotic
+distribution of treatment effect estimators under
+rerandomization, showing it is a truncated normal with
+reduced variance.
 
-\subsection{Trial-Ready Cohorts in Alzheimer's
-Disease}\label{trial-ready-cohorts-in-alzheimers-disease}
+\subsection{Trial-Ready Cohorts in Alzheimer's Disease}\label{trial-ready-cohorts-in-alzheimers-disease}
 
-\subsubsection{The Recruitment
-Challenge}\label{the-recruitment-challenge}
+\subsubsection{The Recruitment Challenge}\label{the-recruitment-challenge}
 
-Alzheimer's disease prevention trials face screening failure rates
-exceeding 80\%, primarily because eligibility requires confirmation of
-brain amyloid pathology via PET imaging or cerebrospinal fluid
-analysis\textsuperscript{\citeproc{ref-sperlingTrialDesignAD2011}{18}}.
-The cost of screening a single participant can exceed \$10,000. These
-constraints motivate the trial-ready cohort approach, in which screening
-and characterization are performed prospectively, creating a pool of
-eligible participants ready for rapid enrollment.
+Alzheimer's disease prevention trials face screening failure
+rates exceeding 80\%, primarily because eligibility requires
+confirmation of brain amyloid pathology via PET imaging or
+cerebrospinal fluid analysis\textsuperscript{\citeproc{ref-sperlingTrialDesignAD2011}{18}}. The cost of screening a single
+participant can exceed \$10,000. These constraints motivate
+the trial-ready cohort approach, in which screening and
+characterization are performed prospectively, creating a pool
+of eligible participants ready for rapid enrollment.
 
 \subsubsection{TRC-PAD}\label{trc-pad}
 
-The Trial-Ready Cohort for Preclinical/Prodromal Alzheimer's Disease
-(TRC-PAD) was established by the Alzheimer's Clinical Trials
-Consortium\textsuperscript{\citeproc{ref-aisenTRCPADOverview2020}{8}}.
-The architecture includes:
+The Trial-Ready Cohort for Preclinical/Prodromal Alzheimer's
+Disease (TRC-PAD) was established by the Alzheimer's Clinical
+Trials Consortium\textsuperscript{\citeproc{ref-aisenTRCPADOverview2020}{8}}. The architecture
+includes:
 
 \begin{itemize}
 \tightlist
 \item
-  An online longitudinal screening study (APT Webstudy) with quarterly
-  cognitive assessments. Over 30,000 individuals consented by 2020.
+  An online longitudinal screening study (APT Webstudy) with
+  quarterly cognitive assessments. Over 30,000 individuals
+  consented by 2020.
 \item
-  Machine learning risk prediction using demographic, genetic, and
-  cognitive data to identify individuals likely to have elevated brain
-  amyloid.
+  Machine learning risk prediction using demographic, genetic,
+  and cognitive data to identify individuals likely to have
+  elevated brain amyloid.
 \item
-  In-person screening with cognitive battery, APOE genotyping, and
-  plasma biomarkers (p-tau217, A\$\beta\$42/40
-  ratio)\textsuperscript{\citeproc{ref-mcdonoughTRCScreening2024}{19}}.
+  In-person screening with cognitive battery, APOE genotyping,
+  and plasma biomarkers (p-tau217, A\$\beta\$42/40 ratio)\textsuperscript{\citeproc{ref-mcdonoughTRCScreening2024}{19}}.
 \item
-  Longitudinal follow-up of biomarker-confirmed eligible participants
-  until a matching trial opens.
+  Longitudinal follow-up of biomarker-confirmed eligible
+  participants until a matching trial opens.
 \end{itemize}
 
 \subsubsection{AHEAD 3-45}\label{ahead-3-45}
 
-The AHEAD 3-45 study\textsuperscript{\citeproc{ref-rafiiAHEAD2023}{10}}
-tests lecanemab in preclinical AD using a sister-trial design: A3
-(intermediate amyloid, Phase 2, imaging endpoints) and A45 (elevated
-amyloid, Phase 3, cognitive endpoints). Both share a common screening
-process drawing from TRC-PAD and direct recruitment. The study
-demonstrates how TRC infrastructure feeds directly into clinical trials.
+The AHEAD 3-45 study\textsuperscript{\citeproc{ref-rafiiAHEAD2023}{10}} tests lecanemab in
+preclinical AD using a sister-trial design: A3 (intermediate
+amyloid, Phase 2, imaging endpoints) and A45 (elevated
+amyloid, Phase 3, cognitive endpoints). Both share a common
+screening process drawing from TRC-PAD and direct
+recruitment. The study demonstrates how TRC infrastructure
+feeds directly into clinical trials.
 
 \subsubsection{DIAN-TU and EPAD}\label{dian-tu-and-epad}
 
-The Dominantly Inherited Alzheimer
-Network\textsuperscript{\citeproc{ref-batemanDIAN2012}{11}} maintains a
-registry of autosomal dominant AD mutation carriers, providing a
-genetically defined trial-ready cohort. The DIAN-TU
-platform\textsuperscript{\citeproc{ref-bateman2017DIANTU}{12}}
-implemented adaptive designs with shared placebo arms and cognitive
-run-in periods.
+The Dominantly Inherited Alzheimer Network\textsuperscript{\citeproc{ref-batemanDIAN2012}{11}} maintains a registry of autosomal dominant
+AD mutation carriers, providing a genetically defined
+trial-ready cohort. The DIAN-TU platform\textsuperscript{\citeproc{ref-bateman2017DIANTU}{12}}
+implemented adaptive designs with shared placebo arms and
+cognitive run-in periods.
 
 The European Prevention of Alzheimer's Dementia (EPAD)
-programme\textsuperscript{\citeproc{ref-solomonEPAD2022}{20}} recruited
-over 2,000 participants into a longitudinal cohort across 39 European
-institutions, explicitly designed as a readiness cohort for adaptive
-proof-of-concept trials.
+programme\textsuperscript{\citeproc{ref-solomonEPAD2022}{20}} recruited over 2,000
+participants into a longitudinal cohort across 39 European
+institutions, explicitly designed as a readiness cohort for
+adaptive proof-of-concept trials.
 
-\subsubsection{Relevance to Matched Factorial
-Designs}\label{relevance-to-matched-factorial-designs}
+\subsubsection{Relevance to Matched Factorial Designs}\label{relevance-to-matched-factorial-designs}
 
 Trial-ready cohorts provide the essential prerequisites for
-matched-tuple randomization: large characterized pools with rich
-baseline phenotyping. The pool-to-sample ratio (available subjects
-divided by trial enrollment target) determines matching quality.
-TRC-PAD's pool of thousands of characterized individuals, combined with
-the factorial treatment structures emerging in combination therapy
-trials, creates an ideal application setting.
+matched-tuple randomization: large characterized pools with
+rich baseline phenotyping. The pool-to-sample ratio (available
+subjects divided by trial enrollment target) determines
+matching quality. TRC-PAD's pool of thousands of characterized
+individuals, combined with the factorial treatment structures
+emerging in combination therapy trials, creates an ideal
+application setting.
 
 \section{Methods}\label{methods}
 
 \subsection{Notation}\label{notation}
 
-Consider \(N\) subjects to be randomized across a \(2^F\) factorial
-design with \(k = 2^F\) treatment combinations. Subjects are grouped
-into \(M = N/k\) matched tuples, each containing \(k\) subjects with
-similar baseline covariate profiles. Within each tuple, the \(k\)
-treatment combinations are assigned uniformly at random to the \(k\)
-subjects.
+Consider \(N\) subjects to be randomized across a \(2^F\)
+factorial design with \(k = 2^F\) treatment combinations.
+Subjects are grouped into \(M = N/k\) matched tuples, each
+containing \(k\) subjects with similar baseline covariate
+profiles. Within each tuple, the \(k\) treatment combinations
+are assigned uniformly at random to the \(k\) subjects.
 
-Let \(X_i \in \mathbb{R}^p\) denote the baseline covariate vector for
-subject \(i\). Let \(Y_i(z)\) denote the potential outcome for subject
-\(i\) under treatment combination \(z \in
-\{0, 1\}^F\). The observed outcome is \(Y_i = Y_i(Z_i)\) where \(Z_i\)
-is the assigned treatment.
+Let \(X_i \in \mathbb{R}^p\) denote the baseline covariate
+vector for subject \(i\). Let \(Y_i(z)\) denote the potential
+outcome for subject \(i\) under treatment combination \(z \in
+\{0, 1\}^F\). The observed outcome is \(Y_i = Y_i(Z_i)\) where
+\(Z_i\) is the assigned treatment.
 
 \subsection{Matching Algorithm}\label{matching-algorithm}
 
@@ -437,85 +501,94 @@ We consider two distance metrics for tuple formation:
 \textbf{Mahalanobis distance.} For subjects \(i\) and \(j\):
 \begin{equation}
   d_M(i,j) = \sqrt{(X_i - X_j)' S^{-1} (X_i - X_j)}
-\end{equation} where \(S\) is the pooled sample covariance matrix of the
+\end{equation}
+where \(S\) is the pooled sample covariance matrix of the
 covariates.
 
-\textbf{Prognostic score distance.} When historical data or pilot study
-results are available, fit a model \(\hat{m}(X) =
-E[Y(0) \mid X]\) predicting the outcome under the reference condition.
-Then: \begin{equation}
+\textbf{Prognostic score distance.} When historical data or pilot
+study results are available, fit a model \(\hat{m}(X) =
+E[Y(0) \mid X]\) predicting the outcome under the reference
+condition. Then:
+\begin{equation}
   d_P(i,j) = |\hat{m}(X_i) - \hat{m}(X_j)|
-\end{equation} Matching on the prognostic score concentrates precision
-gains on the most relevant covariate dimension.
+\end{equation}
+Matching on the prognostic score concentrates precision gains
+on the most relevant covariate dimension.
 
 \subsubsection{Tuple Formation}\label{tuple-formation}
 
-Given \(N\) subjects and tuple size \(k\), partition the subjects into
-\(M = \lfloor N/k \rfloor\) tuples to minimize total within-tuple
-dispersion: \begin{equation}
+Given \(N\) subjects and tuple size \(k\), partition the subjects
+into \(M = \lfloor N/k \rfloor\) tuples to minimize total
+within-tuple dispersion:
+\begin{equation}
   \min_{\mathcal{P}} \sum_{m=1}^{M}
     \sum_{i < j \in \mathcal{T}_m} d(i,j)
-\end{equation} where \(\mathcal{P} = \{\mathcal{T}_1, \ldots,
+\end{equation}
+where \(\mathcal{P} = \{\mathcal{T}_1, \ldots,
 \mathcal{T}_M\}\) is a partition into tuples.
 
-For \(k = 2\), this is optimal pair matching, solvable in polynomial
-time. For \(k > 2\), we consider three approaches:
+For \(k = 2\), this is optimal pair matching, solvable in
+polynomial time. For \(k > 2\), we consider three approaches:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \item
-  \textbf{Sequential greedy.} Select a seed subject, find the \(k-1\)
-  nearest neighbors, form a tuple, remove from pool, repeat. Order seeds
-  by distance to the pool centroid (outermost first) to avoid stranding
-  outliers.
+  \textbf{Sequential greedy.} Select a seed subject, find the
+  \(k-1\) nearest neighbors, form a tuple, remove from pool,
+  repeat. Order seeds by distance to the pool centroid
+  (outermost first) to avoid stranding outliers.
 \item
-  \textbf{Hierarchical clustering.} Perform agglomerative clustering
-  (Ward's method or complete linkage) and cut at the level producing
-  \(M\) clusters of size \(k\). Post-process to enforce exact size \(k\)
-  by splitting large clusters and merging small ones.
+  \textbf{Hierarchical clustering.} Perform agglomerative
+  clustering (Ward's method or complete linkage) and cut at
+  the level producing \(M\) clusters of size \(k\). Post-process
+  to enforce exact size \(k\) by splitting large clusters and
+  merging small ones.
 \item
-  \textbf{Integer programming.} Formulate as an assignment problem:
-  define binary variables \(x_{im} = 1\) if subject \(i\) is assigned to
-  tuple \(m\), and solve the integer program with constraints
-  \(\sum_m x_{im} = 1\) for all \(i\) and \(\sum_i x_{im} = k\) for all
-  \(m\), minimizing total within-tuple distance. Feasible for
-  \(N \lesssim 1000\) using standard solvers.
+  \textbf{Integer programming.} Formulate as an assignment
+  problem: define binary variables \(x_{im} = 1\) if subject
+  \(i\) is assigned to tuple \(m\), and solve the integer program
+  with constraints \(\sum_m x_{im} = 1\) for all \(i\) and
+  \(\sum_i x_{im} = k\) for all \(m\), minimizing total
+  within-tuple distance. Feasible for \(N \lesssim 1000\)
+  using standard solvers.
 \end{enumerate}
 
 \subsubsection{Pool Oversampling}\label{pool-oversampling}
 
 When the trial-ready cohort provides \(N_{\text{pool}} > N\)
-characterized subjects, matching quality improves. The algorithm selects
-the \(N\) subjects that form the best \(M\) tuples, leaving
-\(N_{\text{pool}} - N\) subjects unmatched. The pool-to-sample ratio
-\(r = N_{\text{pool}} / N\) is a design parameter: larger \(r\) yields
-tighter within-tuple matching at the cost of excluding more subjects.
+characterized subjects, matching quality improves. The
+algorithm selects the \(N\) subjects that form the best \(M\)
+tuples, leaving \(N_{\text{pool}} - N\) subjects unmatched. The
+pool-to-sample ratio \(r = N_{\text{pool}} / N\) is a design
+parameter: larger \(r\) yields tighter within-tuple matching at
+the cost of excluding more subjects.
 
-\subsection{Randomization
-Distribution}\label{randomization-distribution}
+\subsection{Randomization Distribution}\label{randomization-distribution}
 
-Within each tuple \(m\), the \(k\) treatment combinations are assigned
-to the \(k\) subjects by drawing uniformly from the \(k!\) permutations.
-Tuples are independent, so the randomization space has \((k!)^M\)
-equally likely allocations.
+Within each tuple \(m\), the \(k\) treatment combinations are
+assigned to the \(k\) subjects by drawing uniformly from the
+\(k!\) permutations. Tuples are independent, so the
+randomization space has \((k!)^M\) equally likely allocations.
 
-This constrained randomization guarantees that for every tuple, each
-treatment arm contains exactly one subject. Consequently, all factorial
-contrasts (main effects, interactions) are perfectly balanced within
-each tuple.
+This constrained randomization guarantees that for every
+tuple, each treatment arm contains exactly one subject.
+Consequently, all factorial contrasts (main effects,
+interactions) are perfectly balanced within each tuple.
 
 \subsection{Estimation}\label{estimation}
 
 \subsubsection{Difference-in-Means}\label{difference-in-means}
 
-For a factorial contrast \(c\) defined by a coefficient vector \(w_z\)
-over treatment combinations (with \(\sum_z w_z = 0\)), the estimator is:
+For a factorial contrast \(c\) defined by a coefficient vector
+\(w_z\) over treatment combinations (with \(\sum_z w_z = 0\)),
+the estimator is:
 \begin{equation}
   \hat{\tau}_c = \frac{1}{M} \sum_{m=1}^{M}
     \sum_{z} w_z \, Y_{m}(z)
-\end{equation} where \(Y_{m}(z)\) is the outcome of the subject in tuple
-\(m\) assigned to treatment \(z\). This estimator is unbiased under the
-matched-tuple randomization distribution.
+\end{equation}
+where \(Y_{m}(z)\) is the outcome of the subject in tuple \(m\)
+assigned to treatment \(z\). This estimator is unbiased under
+the matched-tuple randomization distribution.
 
 \subsubsection{Variance Estimation}\label{variance-estimation}
 
@@ -523,60 +596,63 @@ The exact variance under matched-tuple randomization is:
 \begin{equation}
   \text{Var}(\hat{\tau}_c) = \frac{1}{M^2}
     \sum_{m=1}^{M} V_m(c)
-\end{equation} where \(V_m(c)\) depends on the within-tuple potential
-outcomes. A conservative estimator replaces \(V_m(c)\) with the
-within-tuple sample variance of the contrast-weighted outcomes.
+\end{equation}
+where \(V_m(c)\) depends on the within-tuple potential
+outcomes. A conservative estimator replaces \(V_m(c)\) with
+the within-tuple sample variance of the contrast-weighted
+outcomes.
 
 \subsubsection{Regression Adjustment}\label{regression-adjustment}
 
-Following\textsuperscript{\citeproc{ref-linAgnosticNotes2013}{21}}
-and\textsuperscript{\citeproc{ref-fogartyRegressionAssisted2018}{7}}, we
-augment the difference-in-means with a regression adjustment:
+Following\textsuperscript{\citeproc{ref-linAgnosticNotes2013}{21}} and\textsuperscript{\citeproc{ref-fogartyRegressionAssisted2018}{7}}, we augment the
+difference-in-means with a regression adjustment:
 \begin{equation}
   \hat{\tau}_c^{\text{adj}} = \hat{\tau}_c -
     \hat{\beta}'(\bar{X}_c^{+} - \bar{X}_c^{-})
-\end{equation} where \(\hat{\beta}\) is estimated from an outcome
-regression and \(\bar{X}_c^{+}, \bar{X}_c^{-}\) are the covariate means
+\end{equation}
+where \(\hat{\beta}\) is estimated from an outcome regression
+and \(\bar{X}_c^{+}, \bar{X}_c^{-}\) are the covariate means
 for the positive and negative arms of contrast \(c\). Under
-matched-tuple randomization, \(\bar{X}_c^{+} - \bar{X}_c^{-}\) is
-already close to zero, so the adjustment is small but further reduces
-variance.
+matched-tuple randomization, \(\bar{X}_c^{+} - \bar{X}_c^{-}\)
+is already close to zero, so the adjustment is small but
+further reduces variance.
 
 \subsection{Efficiency Analysis}\label{efficiency-analysis}
 
 \subsubsection{Relative Efficiency}\label{relative-efficiency}
 
-Define the relative efficiency of matched-tuple randomization versus
-simple randomization as: \begin{equation}
+Define the relative efficiency of matched-tuple randomization
+versus simple randomization as:
+\begin{equation}
   \text{RE} = \frac{\text{Var}_{\text{simple}}(\hat{\tau}_c)}
     {\text{Var}_{\text{matched}}(\hat{\tau}_c)}
 \end{equation}
 
-We derive RE as a function of the within-tuple intraclass correlation
-\(\rho_w\) of the contrast-relevant potential outcomes. When tuples are
-perfectly matched (\(\rho_w \to 1\)), \(\text{RE} \to k/(k-1) \cdot M\),
+We derive RE as a function of the within-tuple intraclass
+correlation \(\rho_w\) of the contrast-relevant potential
+outcomes. When tuples are perfectly matched
+(\(\rho_w \to 1\)), \(\text{RE} \to k/(k-1) \cdot M\),
 reflecting the elimination of between-tuple variation.
 
 \subsubsection{Degrees of Freedom}\label{degrees-of-freedom}
 
-A practical concern is the loss of degrees of freedom. Under simple
-randomization with \(N\) subjects and \(k\) arms, the residual degrees
-of freedom for variance estimation are \(N - k\). Under matched-tuple
-randomization, the effective degrees of freedom are \(M - 1 = N/k - 1\).
-When \(k\) is large and \(M\) is small, this loss can offset precision
-gains from matching, particularly for coverage of confidence
-intervals\textsuperscript{\citeproc{ref-martinMatchingPower1993}{22}}.
+A practical concern is the loss of degrees of freedom. Under
+simple randomization with \(N\) subjects and \(k\) arms, the
+residual degrees of freedom for variance estimation are
+\(N - k\). Under matched-tuple randomization, the effective
+degrees of freedom are \(M - 1 = N/k - 1\). When \(k\) is large
+and \(M\) is small, this loss can offset precision gains from
+matching, particularly for coverage of confidence intervals\textsuperscript{\citeproc{ref-martinMatchingPower1993}{22}}.
 
 \section{Simulation Study}\label{simulation-study}
 
 \subsection{Design}\label{design}
 
-We evaluate five randomization strategies in a \(2 \times 2\) factorial
-design (\(k = 4\)) under scenarios motivated by Alzheimer's disease
-prevention trials.
+We evaluate five randomization strategies in a \(2 \times 2\)
+factorial design (\(k = 4\)) under scenarios motivated by
+Alzheimer's disease prevention trials.
 
-\subsubsection{Data Generating
-Mechanism}\label{data-generating-mechanism}
+\subsubsection{Data Generating Mechanism}\label{data-generating-mechanism}
 
 \begin{table}[!h]
 \centering
@@ -600,12 +676,14 @@ Outcome distribution & Normal, skewed\\
 \end{tabular}
 \end{table}
 
-Subjects have \(p\) baseline covariates drawn from a multivariate normal
-distribution with AR(1) correlation (\(\rho = 0.3\)). The outcome is
-generated as: \begin{equation}
+Subjects have \(p\) baseline covariates drawn from a
+multivariate normal distribution with AR(1) correlation
+(\(\rho = 0.3\)). The outcome is generated as:
+\begin{equation}
   Y_i = X_i' \beta + \tau_A \cdot A_i + \tau_B \cdot B_i +
     \tau_{AB} \cdot A_i B_i + \varepsilon_i
-\end{equation} where \(\beta\) is calibrated to achieve the specified
+\end{equation}
+where \(\beta\) is calibrated to achieve the specified
 \(R^2\), \(A_i\) and \(B_i\) are treatment indicators, and
 \(\varepsilon_i \sim N(0, \sigma^2)\).
 
@@ -631,14 +709,14 @@ Matched-tuple (proposed) & Optimal $k$-tuples, random within-tuple\\
 
 \subsubsection{Evaluation Metrics}\label{evaluation-metrics}
 
-For each scenario and method, we compute across 2,000 simulation
-replicates:
+For each scenario and method, we compute across 2,000
+simulation replicates:
 
 \begin{itemize}
 \tightlist
 \item
-  Covariate balance: maximum absolute standardized mean difference
-  across all pairwise arm comparisons.
+  Covariate balance: maximum absolute standardized mean
+  difference across all pairwise arm comparisons.
 \item
   Bias of the main effect and interaction estimators.
 \item
@@ -646,8 +724,8 @@ replicates:
 \item
   95\% confidence interval coverage.
 \item
-  Power (proportion of replicates rejecting \(H_0: \tau = 0\) at
-  \(\alpha = 0.05\)).
+  Power (proportion of replicates rejecting \(H_0: \tau = 0\)
+  at \(\alpha = 0.05\)).
 \end{itemize}
 
 \subsection{Results}\label{results}
@@ -655,12 +733,20 @@ replicates:
 \subsubsection{Headline findings}\label{headline-findings}
 
 \textbf{Provenance.} The full factorial sweep completed at 2,000
-replicates per cell, producing the 1296 scenario-method-estimator rows
-in \texttt{sim\_performance.rds}. Across those rows, absolute bias never
-exceeded 0.117, coverage of 95\% CIs fell in {[}0.054, 0.998{]}, and
-rejection rate in {[}0.003, 0.898{]}. The earlier audit at
-\texttt{docs/morris-audit-2026-04-17.md} predates the completed run and
-is retained for historical reference.
+replicates per cell, producing the
+1296 scenario-method-estimator rows in
+\texttt{sim\_performance.rds}. Across those rows, absolute bias never
+exceeded
+0.117,
+coverage of 95\% CIs fell in
+{[}0.054,
+0.998{]},
+and rejection rate in
+{[}0.003,
+0.898{]}.
+The earlier audit at
+\texttt{docs/morris-audit-2026-04-17.md} predates the completed run
+and is retained for historical reference.
 
 \subsubsection{Covariate Balance}\label{covariate-balance}
 
@@ -695,8 +781,7 @@ is retained for historical reference.
 \caption{Empirical 95\% CI coverage by randomization method, sample size, and variance estimator. The horizontal line marks the nominal 0.95.}\label{fig:coverage-by-method-n}
 \end{figure}
 
-\subsubsection{Effect of Pool
-Oversampling}\label{effect-of-pool-oversampling}
+\subsubsection{Effect of Pool Oversampling}\label{effect-of-pool-oversampling}
 
 \begin{figure}
 
@@ -707,14 +792,13 @@ Oversampling}\label{effect-of-pool-oversampling}
 \caption{Relative efficiency from 2x pool oversampling: ratio of empirical SE under matched\_1.0 (no oversampling) to matched\_2.0 (2x pool), by prognostic strength ($R^2$) and sample size. Values above 1 indicate that oversampling improves precision.}\label{fig:oversampling-relative-efficiency}
 \end{figure}
 
-\section{Application: Alzheimer's Disease Prevention
-Trial}\label{application-alzheimers-disease-prevention-trial}
+\section{Application: Alzheimer's Disease Prevention Trial}\label{application-alzheimers-disease-prevention-trial}
 
-We illustrate the proposed method using a design scenario motivated by
-the AHEAD trial structure. Consider a \(2 \times
-2\) factorial testing anti-amyloid therapy (yes/no) crossed with a
-tau-targeting intervention (yes/no) in preclinical AD subjects drawn
-from a trial-ready cohort.
+We illustrate the proposed method using a design scenario
+motivated by the AHEAD trial structure. Consider a \(2 \times
+2\) factorial testing anti-amyloid therapy (yes/no) crossed
+with a tau-targeting intervention (yes/no) in preclinical AD
+subjects drawn from a trial-ready cohort.
 
 \subsection{Design Parameters}\label{design-parameters}
 
@@ -733,18 +817,11 @@ from a trial-ready cohort.
   \textbf{Primary endpoint:} Change in PACC at 4 years
 \end{itemize}
 
-\emph{A full worked example on simulated TRC-like data is reserved for a
-companion paper. The performance characteristics in the simulation
-tables above are directly applicable to a 2,000-participant pool matched
-into tuples of size 4 for a factorial anti-amyloid-by-tau trial; the
-design tables in the next subsection summarise the expected matching
-quality, treatment-effect estimation precision, and coverage for that
-scenario.}
+\emph{A full worked example on simulated TRC-like data is reserved for a companion paper. The performance characteristics in the simulation tables above are directly applicable to a 2,000-participant pool matched into tuples of size 4 for a factorial anti-amyloid-by-tau trial; the design tables in the next subsection summarise the expected matching quality, treatment-effect estimation precision, and coverage for that scenario.}
 
 \subsection{Matching Quality}\label{matching-quality}
 
-\subsection{Treatment Effect
-Estimation}\label{treatment-effect-estimation}
+\subsection{Treatment Effect Estimation}\label{treatment-effect-estimation}
 
 \section{Discussion}\label{discussion}
 
@@ -752,8 +829,7 @@ Estimation}\label{treatment-effect-estimation}
 
 \subsection{Practical Considerations}\label{practical-considerations}
 
-\subsubsection{When to Use Matched-Tuple
-Randomization}\label{when-to-use-matched-tuple-randomization}
+\subsubsection{When to Use Matched-Tuple Randomization}\label{when-to-use-matched-tuple-randomization}
 
 Matched-tuple randomization is most advantageous when:
 
@@ -761,9 +837,9 @@ Matched-tuple randomization is most advantageous when:
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  The full pool of subjects is available before randomization (as in
-  trial-ready cohorts), permitting global rather than sequential
-  matching.
+  The full pool of subjects is available before randomization
+  (as in trial-ready cohorts), permitting global rather than
+  sequential matching.
 \item
   Strong prognostic covariates are measured at baseline.
 \item
@@ -771,40 +847,42 @@ Matched-tuple randomization is most advantageous when:
   8\), i.e., up to \(2^3\) designs), to avoid excessive
   degrees-of-freedom loss.
 \item
-  The pool-to-sample ratio \(r\) exceeds 1, providing excess subjects
-  for quality matching.
+  The pool-to-sample ratio \(r\) exceeds 1, providing excess
+  subjects for quality matching.
 \end{enumerate}
 
 \subsubsection{Limitations}\label{limitations}
 
-The primary limitation is the loss of degrees of freedom relative to
-unrestricted randomization. With \(M\) tuples, the effective degrees of
-freedom for variance estimation are \(M - 1\), compared to \(N - k\)
-under simple randomization. This concern is attenuated when \(N\) is
-large enough that \(M = N/k\) remains sufficient (e.g., \(M > 30\)).
+The primary limitation is the loss of degrees of freedom
+relative to unrestricted randomization. With \(M\) tuples, the
+effective degrees of freedom for variance estimation are
+\(M - 1\), compared to \(N - k\) under simple randomization.
+This concern is attenuated when \(N\) is large enough that
+\(M = N/k\) remains sufficient (e.g., \(M > 30\)).
 
-A second limitation is computational. Optimal \(k\)-tuple formation by
-integer programming is feasible for \(N \lesssim
-1000\) but may require heuristic approaches for larger pools. In the TRC
-setting, pool sizes of 1,000 to 2,000 characterized subjects are
-typical, placing the problem within the tractable range.
+A second limitation is computational. Optimal \(k\)-tuple
+formation by integer programming is feasible for \(N \lesssim
+1000\) but may require heuristic approaches for larger pools.
+In the TRC setting, pool sizes of 1,000 to 2,000 characterized
+subjects are typical, placing the problem within the tractable
+range.
 
-\subsubsection{Relation to
-Rerandomization}\label{relation-to-rerandomization}
+\subsubsection{Relation to Rerandomization}\label{relation-to-rerandomization}
 
-Rerandomization\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}}
-and matched-tuple randomization address the same goal -- covariate
-balance -- through different mechanisms. Rerandomization restricts the
+Rerandomization\textsuperscript{\citeproc{ref-morganRerandomization2012}{4}} and matched-tuple
+randomization address the same goal -- covariate balance --
+through different mechanisms. Rerandomization restricts the
 allocation space to a subset of all possible randomizations.
-Matched-tuple randomization restricts both the allocation space and the
-subject grouping. The two approaches can be combined: form tuples, then
-rerandomize within tuples to further balance residual covariates, though
-the marginal benefit of this combination may be small when tuples are
+Matched-tuple randomization restricts both the allocation
+space and the subject grouping. The two approaches can be
+combined: form tuples, then rerandomize within tuples to
+further balance residual covariates, though the marginal
+benefit of this combination may be small when tuples are
 well matched.
 
 \subsection{Future Work}\label{future-work}
 
-Several extensions merit investigation:
+Several extensions merit further investigation:
 
 \begin{itemize}
 \tightlist
@@ -813,25 +891,24 @@ Several extensions merit investigation:
   \(2^{F-p}\) fractional factorial reduces \(k\). Matched-tuple
   randomization extends directly with \(k = 2^{F-p}\).
 \item
-  \textbf{Unequal allocation.} When factorial arms have unequal target
-  sizes (e.g., shared placebo arm), the matching problem requires tuples
-  of heterogeneous size.
+  \textbf{Unequal allocation.} When factorial arms have unequal
+  target sizes (e.g., shared placebo arm), the matching
+  problem requires tuples of heterogeneous size.
 \item
-  \textbf{Adaptive enrichment.} Combining matched-tuple randomization
-  with biomarker-driven adaptive enrichment designs.
+  \textbf{Adaptive enrichment.} Combining matched-tuple
+  randomization with biomarker-driven adaptive enrichment
+  designs.
 \item
-  \textbf{Time-to-event outcomes.} Extending the inference framework to
-  survival endpoints.
+  \textbf{Time-to-event outcomes.} Extending the inference
+  framework to survival endpoints.
 \end{itemize}
 
 \section{References}\label{references}
 
-\subsection{Morris et al.~(2019) ADEMP
-Compliance}\label{morris-et-al.-2019-ademp-compliance}
+\subsection{Morris et al.~(2019) ADEMP Compliance}\label{morris-et-al.-2019-ademp-compliance}
 
-This simulation study was audited against the reporting standards
-proposed by Morris, White, and
-Crowther\textsuperscript{\citeproc{ref-morris2019using}{23}}. The full
+We audited this simulation study against the reporting standards
+proposed by Morris, White, and Crowther\textsuperscript{\citeproc{ref-morris2019using}{23}}. The full
 audit is at \texttt{docs/morris-audit-2026-04-17.md}.
 
 \textbf{Verdict:} Mostly compliant.
@@ -841,201 +918,109 @@ audit is at \texttt{docs/morris-audit-2026-04-17.md}.
 \begin{itemize}
 \tightlist
 \item
-  \texttt{n\_replicates\ =\ 2000} not justified via a Monte Carlo SE
-  target.
+  \texttt{n\_replicates\ =\ 2000} not justified via a Monte Carlo SE target.
 \item
-  MCSE columns are computed but not wired into the report tables ---
-  TODO placeholders remain around \texttt{report.Rmd:605-649}.
+  MCSE columns are computed but not wired into the report tables --- TODO placeholders remain around \texttt{report.Rmd:605-649}.
 \item
-  \texttt{RNGkind(\textquotesingle{}L\textbackslash{}\textquotesingle{}Ecuyer-CMRG\textquotesingle{})}
-  not pinned; no per-replicate \texttt{.Random.seed} snapshot stored.
+  \texttt{RNGkind(\textquotesingle{}L\textbackslash{}\textquotesingle{}Ecuyer-CMRG\textquotesingle{})} not pinned; no per-replicate \texttt{.Random.seed} snapshot stored.
 \end{itemize}
 
-A remediation plan is documented in the audit file and will be executed
-in a subsequent revision.
-
-\vfill
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\emph{Rendered on 2026-05-11 at 10:26 PDT.}\\
-\emph{Source:
-\texttt{\textasciitilde{}/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd}}
+A remediation plan is recorded in the audit file and will be
+taken up in a subsequent revision.
 
 \protect\phantomsection\label{refs}
 \begin{CSLReferences}{0}{1}
 \bibitem[\citeproctext]{ref-fisherDesignExperiments1935}
 \CSLLeftMargin{1. }%
-\CSLRightInline{Fisher RA. \emph{The Design of Experiments}. Oliver;
-Boyd; 1935.}
+\CSLRightInline{Fisher RA. \emph{The Design of Experiments}. Oliver; Boyd; 1935.}
 
 \bibitem[\citeproctext]{ref-kernanStratifiedRandomization1999}
 \CSLLeftMargin{2. }%
-\CSLRightInline{Kernan WN, Viscoli CM, Makuch RW, Brass LM, Horwitz RI.
-Stratified randomization for clinical trials. \emph{Journal of Clinical
-Epidemiology}. 1999;52(1):19-26.
-doi:\href{https://doi.org/10.1016/S0895-4356(98)00138-3}{10.1016/S0895-4356(98)00138-3}}
+\CSLRightInline{Kernan WN, Viscoli CM, Makuch RW, Brass LM, Horwitz RI. Stratified randomization for clinical trials. \emph{Journal of Clinical Epidemiology}. 1999;52(1):19-26. doi:\href{https://doi.org/10.1016/S0895-4356(98)00138-3}{10.1016/S0895-4356(98)00138-3}}
 
 \bibitem[\citeproctext]{ref-pocockSequentialTreatment1975}
 \CSLLeftMargin{3. }%
-\CSLRightInline{Pocock SJ, Simon R. Sequential treatment assignment with
-balancing for prognostic factors in the controlled clinical trial.
-\emph{Biometrics}. 1975;31(1):103-115.
-doi:\href{https://doi.org/10.2307/2529712}{10.2307/2529712}}
+\CSLRightInline{Pocock SJ, Simon R. Sequential treatment assignment with balancing for prognostic factors in the controlled clinical trial. \emph{Biometrics}. 1975;31(1):103-115. doi:\href{https://doi.org/10.2307/2529712}{10.2307/2529712}}
 
 \bibitem[\citeproctext]{ref-morganRerandomization2012}
 \CSLLeftMargin{4. }%
-\CSLRightInline{Morgan KL, Rubin DB. Rerandomization to improve
-covariate balance in experiments. \emph{The Annals of Statistics}.
-2012;40(2):1263-1282.
-doi:\href{https://doi.org/10.1214/12-AOS1008}{10.1214/12-AOS1008}}
+\CSLRightInline{Morgan KL, Rubin DB. Rerandomization to improve covariate balance in experiments. \emph{The Annals of Statistics}. 2012;40(2):1263-1282. doi:\href{https://doi.org/10.1214/12-AOS1008}{10.1214/12-AOS1008}}
 
 \bibitem[\citeproctext]{ref-baiOptimalityMatchedPairDesigns2022}
 \CSLLeftMargin{5. }%
-\CSLRightInline{Bai Y. Optimality of {Matched-Pair Designs} in
-{Randomized Controlled Trials}. \emph{American Economic Review}.
-2022;112(12):3911-3940.
-doi:\href{https://doi.org/10.1257/aer.20201856}{10.1257/aer.20201856}}
+\CSLRightInline{Bai Y. Optimality of {Matched-Pair Designs} in {Randomized Controlled Trials}. \emph{American Economic Review}. 2022;112(12):3911-3940. doi:\href{https://doi.org/10.1257/aer.20201856}{10.1257/aer.20201856}}
 
 \bibitem[\citeproctext]{ref-imaiVarianceIdentification2008}
 \CSLLeftMargin{6. }%
-\CSLRightInline{Imai K. Variance identification and efficiency analysis
-in randomized experiments under the matched-pair design.
-\emph{Statistics in Medicine}. 2008;27(24):4857-4873.
-doi:\href{https://doi.org/10.1002/sim.3337}{10.1002/sim.3337}}
+\CSLRightInline{Imai K. Variance identification and efficiency analysis in randomized experiments under the matched-pair design. \emph{Statistics in Medicine}. 2008;27(24):4857-4873. doi:\href{https://doi.org/10.1002/sim.3337}{10.1002/sim.3337}}
 
 \bibitem[\citeproctext]{ref-fogartyRegressionAssisted2018}
 \CSLLeftMargin{7. }%
-\CSLRightInline{Fogarty CB. Regression-assisted inference for the
-average treatment effect in paired experiments. \emph{Biometrika}.
-2018;105(4):994-1000.
-doi:\href{https://doi.org/10.1093/biomet/asy034}{10.1093/biomet/asy034}}
+\CSLRightInline{Fogarty CB. Regression-assisted inference for the average treatment effect in paired experiments. \emph{Biometrika}. 2018;105(4):994-1000. doi:\href{https://doi.org/10.1093/biomet/asy034}{10.1093/biomet/asy034}}
 
 \bibitem[\citeproctext]{ref-aisenTRCPADOverview2020}
 \CSLLeftMargin{8. }%
-\CSLRightInline{Aisen PS, Sperling RA, Cummings J, et al. The
-{Trial-Ready Cohort} for {Preclinical}/{Prodromal Alzheimer}'s {Disease}
-({TRC-PAD}) {Project}: {An Overview}. \emph{The Journal of Prevention of
-Alzheimer's Disease}. 2020;7(4):208-212.
-doi:\href{https://doi.org/10.14283/jpad.2020.45}{10.14283/jpad.2020.45}}
+\CSLRightInline{Aisen PS, Sperling RA, Cummings J, et al. The {Trial-Ready Cohort} for {Preclinical}/{Prodromal Alzheimer}'s {Disease} ({TRC-PAD}) {Project}: {An Overview}. \emph{The Journal of Prevention of Alzheimer's Disease}. 2020;7(4):208-212. doi:\href{https://doi.org/10.14283/jpad.2020.45}{10.14283/jpad.2020.45}}
 
 \bibitem[\citeproctext]{ref-aisenTRCPADExperience2020}
 \CSLLeftMargin{9. }%
-\CSLRightInline{Aisen PS, Jimenez-Maggiora GA, Rafii MS, Walter S, Raman
-R. The {Trial-Ready Cohort} for {Preclinical} and {Prodromal
-Alzheimer}'s {Disease} ({TRC-PAD}): {Experience} from the {First} 3
-{Years}. \emph{The Journal of Prevention of Alzheimer's Disease}.
-2020;7(4):234-241.
-doi:\href{https://doi.org/10.14283/jpad.2020.47}{10.14283/jpad.2020.47}}
+\CSLRightInline{Aisen PS, Jimenez-Maggiora GA, Rafii MS, Walter S, Raman R. The {Trial-Ready Cohort} for {Preclinical} and {Prodromal Alzheimer}'s {Disease} ({TRC-PAD}): {Experience} from the {First} 3 {Years}. \emph{The Journal of Prevention of Alzheimer's Disease}. 2020;7(4):234-241. doi:\href{https://doi.org/10.14283/jpad.2020.47}{10.14283/jpad.2020.47}}
 
 \bibitem[\citeproctext]{ref-rafiiAHEAD2023}
 \CSLLeftMargin{10. }%
-\CSLRightInline{Rafii MS, Sperling RA, Donohue MC, et al. The {AHEAD}
-3--45 {Study}: {Design} of a prevention trial for {Alzheimer}'s disease.
-\emph{Alzheimer's \& Dementia}. 2023;19(4):1227-1233.
-doi:\href{https://doi.org/10.1002/alz.12748}{10.1002/alz.12748}}
+\CSLRightInline{Rafii MS, Sperling RA, Donohue MC, et al. The {AHEAD} 3--45 {Study}: {Design} of a prevention trial for {Alzheimer}'s disease. \emph{Alzheimer's \& Dementia}. 2023;19(4):1227-1233. doi:\href{https://doi.org/10.1002/alz.12748}{10.1002/alz.12748}}
 
 \bibitem[\citeproctext]{ref-batemanDIAN2012}
 \CSLLeftMargin{11. }%
-\CSLRightInline{Bateman RJ, Xiong C, Benzinger TLS, et al. Clinical and
-biomarker changes in dominantly inherited {Alzheimer}'s disease.
-\emph{New England Journal of Medicine}. 2012;367(9):795-804.
-doi:\href{https://doi.org/10.1056/NEJMoa1202753}{10.1056/NEJMoa1202753}}
+\CSLRightInline{Bateman RJ, Xiong C, Benzinger TLS, et al. Clinical and biomarker changes in dominantly inherited {Alzheimer}'s disease. \emph{New England Journal of Medicine}. 2012;367(9):795-804. doi:\href{https://doi.org/10.1056/NEJMoa1202753}{10.1056/NEJMoa1202753}}
 
 \bibitem[\citeproctext]{ref-bateman2017DIANTU}
 \CSLLeftMargin{12. }%
-\CSLRightInline{Bateman RJ, Benzinger TLS, Berry S, et al. The {DIAN-TU
-Next Generation Alzheimer}'s prevention trial: Adaptive design and
-disease progression model. \emph{Alzheimer's \& Dementia}.
-2017;13(1):8-19.
-doi:\href{https://doi.org/10.1016/j.jalz.2016.07.005}{10.1016/j.jalz.2016.07.005}}
+\CSLRightInline{Bateman RJ, Benzinger TLS, Berry S, et al. The {DIAN-TU Next Generation Alzheimer}'s prevention trial: Adaptive design and disease progression model. \emph{Alzheimer's \& Dementia}. 2017;13(1):8-19. doi:\href{https://doi.org/10.1016/j.jalz.2016.07.005}{10.1016/j.jalz.2016.07.005}}
 
 \bibitem[\citeproctext]{ref-dasguptaCausalInference2015}
 \CSLLeftMargin{13. }%
-\CSLRightInline{Dasgupta T, Pillai NS, Rubin DB. Causal inference from
-2\textsuperscript{K} factorial designs by using potential outcomes.
-\emph{Journal of the Royal Statistical Society: Series B (Statistical
-Methodology)}. 2015;77(4):727-753.
-doi:\href{https://doi.org/10.1111/rssb.12085}{10.1111/rssb.12085}}
+\CSLRightInline{Dasgupta T, Pillai NS, Rubin DB. Causal inference from 2\textsuperscript{K} factorial designs by using potential outcomes. \emph{Journal of the Royal Statistical Society: Series B (Statistical Methodology)}. 2015;77(4):727-753. doi:\href{https://doi.org/10.1111/rssb.12085}{10.1111/rssb.12085}}
 
 \bibitem[\citeproctext]{ref-collinsMultiphaseOptimization2007}
 \CSLLeftMargin{14. }%
-\CSLRightInline{Collins LM, Murphy SA, Strecher V. The multiphase
-optimization strategy ({MOST}) and the sequential multiple assignment
-randomized trial ({SMART}): New methods for more potent {eHealth}
-interventions. \emph{American Journal of Preventive Medicine}.
-2007;32(5):S112-S118.
-doi:\href{https://doi.org/10.1016/j.amepre.2007.01.022}{10.1016/j.amepre.2007.01.022}}
+\CSLRightInline{Collins LM, Murphy SA, Strecher V. The multiphase optimization strategy ({MOST}) and the sequential multiple assignment randomized trial ({SMART}): New methods for more potent {eHealth} interventions. \emph{American Journal of Preventive Medicine}. 2007;32(5):S112-S118. doi:\href{https://doi.org/10.1016/j.amepre.2007.01.022}{10.1016/j.amepre.2007.01.022}}
 
 \bibitem[\citeproctext]{ref-cummingsADTrialDesign2024}
 \CSLLeftMargin{15. }%
-\CSLRightInline{Cummings J, Zhou Y, Lee G, Zhong K, Fonseca J, Cheng F.
-Alzheimer's disease drug development pipeline: 2024. \emph{Alzheimer's
-\& Dementia: Translational Research \& Clinical Interventions}.
-2024;10(2):e12465.
-doi:\href{https://doi.org/10.1002/trc2.12465}{10.1002/trc2.12465}}
+\CSLRightInline{Cummings J, Zhou Y, Lee G, Zhong K, Fonseca J, Cheng F. Alzheimer's disease drug development pipeline: 2024. \emph{Alzheimer's \& Dementia: Translational Research \& Clinical Interventions}. 2024;10(2):e12465. doi:\href{https://doi.org/10.1002/trc2.12465}{10.1002/trc2.12465}}
 
 \bibitem[\citeproctext]{ref-greevyOptimalMatching2004}
 \CSLLeftMargin{16. }%
-\CSLRightInline{Greevy R, Lu B, Silber JH, Rosenbaum P. Optimal
-multivariate matching before randomization. \emph{Biostatistics}.
-2004;5(2):263-275.
-doi:\href{https://doi.org/10.1093/biostatistics/5.2.263}{10.1093/biostatistics/5.2.263}}
+\CSLRightInline{Greevy R, Lu B, Silber JH, Rosenbaum P. Optimal multivariate matching before randomization. \emph{Biostatistics}. 2004;5(2):263-275. doi:\href{https://doi.org/10.1093/biostatistics/5.2.263}{10.1093/biostatistics/5.2.263}}
 
 \bibitem[\citeproctext]{ref-liRerandomizationAsymptotics2018}
 \CSLLeftMargin{17. }%
-\CSLRightInline{Li X, Ding P, Rubin DB. Asymptotic theory of
-rerandomization in treatment-control experiments. \emph{Proceedings of
-the National Academy of Sciences}. 2018;115(37):9157-9162.
-doi:\href{https://doi.org/10.1073/pnas.1808191115}{10.1073/pnas.1808191115}}
+\CSLRightInline{Li X, Ding P, Rubin DB. Asymptotic theory of rerandomization in treatment-control experiments. \emph{Proceedings of the National Academy of Sciences}. 2018;115(37):9157-9162. doi:\href{https://doi.org/10.1073/pnas.1808191115}{10.1073/pnas.1808191115}}
 
 \bibitem[\citeproctext]{ref-sperlingTrialDesignAD2011}
 \CSLLeftMargin{18. }%
-\CSLRightInline{Sperling RA, Aisen PS, Beckett LA, et al. Toward
-defining the preclinical stages of {Alzheimer}'s disease:
-Recommendations from the {National Institute} on {Aging} --
-{Alzheimer}'s {Association} workgroups on diagnostic guidelines for
-{Alzheimer}'s disease. \emph{Alzheimer's \& Dementia}.
-2011;7(3):280-292.
-doi:\href{https://doi.org/10.1016/j.jalz.2011.03.003}{10.1016/j.jalz.2011.03.003}}
+\CSLRightInline{Sperling RA, Aisen PS, Beckett LA, et al. Toward defining the preclinical stages of {Alzheimer}'s disease: Recommendations from the {National Institute} on {Aging} -- {Alzheimer}'s {Association} workgroups on diagnostic guidelines for {Alzheimer}'s disease. \emph{Alzheimer's \& Dementia}. 2011;7(3):280-292. doi:\href{https://doi.org/10.1016/j.jalz.2011.03.003}{10.1016/j.jalz.2011.03.003}}
 
 \bibitem[\citeproctext]{ref-mcdonoughTRCScreening2024}
 \CSLLeftMargin{19. }%
-\CSLRightInline{McDonough IM, Nosheny RL, Sperling RA, Aisen PS, Raman
-R. Plasma biomarker prescreening for a {Trial-Ready Cohort} for
-{Alzheimer}'s prevention trials. \emph{The Journal of Prevention of
-Alzheimer's Disease}. 2024;11(3):608-617.
-doi:\href{https://doi.org/10.14283/jpad.2024.26}{10.14283/jpad.2024.26}}
+\CSLRightInline{McDonough IM, Nosheny RL, Sperling RA, Aisen PS, Raman R. Plasma biomarker prescreening for a {Trial-Ready Cohort} for {Alzheimer}'s prevention trials. \emph{The Journal of Prevention of Alzheimer's Disease}. 2024;11(3):608-617. doi:\href{https://doi.org/10.14283/jpad.2024.26}{10.14283/jpad.2024.26}}
 
 \bibitem[\citeproctext]{ref-solomonEPAD2022}
 \CSLLeftMargin{20. }%
-\CSLRightInline{Solomon A, Kivipelto M, Molinuevo JL, Tom B, Ritchie CW.
-The {European Prevention} of {Alzheimer}'s {Dementia Programme}: {An
-Innovative Medicines Initiative-funded} partnership to facilitate
-secondary prevention of {Alzheimer}'s disease dementia. \emph{Frontiers
-in Neurology}. 2022;13:1051543.
-doi:\href{https://doi.org/10.3389/fneur.2022.1051543}{10.3389/fneur.2022.1051543}}
+\CSLRightInline{Solomon A, Kivipelto M, Molinuevo JL, Tom B, Ritchie CW. The {European Prevention} of {Alzheimer}'s {Dementia Programme}: {An Innovative Medicines Initiative-funded} partnership to facilitate secondary prevention of {Alzheimer}'s disease dementia. \emph{Frontiers in Neurology}. 2022;13:1051543. doi:\href{https://doi.org/10.3389/fneur.2022.1051543}{10.3389/fneur.2022.1051543}}
 
 \bibitem[\citeproctext]{ref-linAgnosticNotes2013}
 \CSLLeftMargin{21. }%
-\CSLRightInline{Lin W. Agnostic notes on regression adjustments to
-experimental data: Reexamining {Freedman's} critique. \emph{The Annals
-of Applied Statistics}. 2013;7(1):295-318.
-doi:\href{https://doi.org/10.1214/12-AOAS583}{10.1214/12-AOAS583}}
+\CSLRightInline{Lin W. Agnostic notes on regression adjustments to experimental data: Reexamining {Freedman's} critique. \emph{The Annals of Applied Statistics}. 2013;7(1):295-318. doi:\href{https://doi.org/10.1214/12-AOAS583}{10.1214/12-AOAS583}}
 
 \bibitem[\citeproctext]{ref-martinMatchingPower1993}
 \CSLLeftMargin{22. }%
-\CSLRightInline{Martin DC, Diehr P, Perrin EB, Koepsell TD. The effect
-of matching on the power of randomized community intervention studies.
-\emph{Statistics in Medicine}. 1993;12(3--4):329-338.
-doi:\href{https://doi.org/10.1002/sim.4780120315}{10.1002/sim.4780120315}}
+\CSLRightInline{Martin DC, Diehr P, Perrin EB, Koepsell TD. The effect of matching on the power of randomized community intervention studies. \emph{Statistics in Medicine}. 1993;12(3--4):329-338. doi:\href{https://doi.org/10.1002/sim.4780120315}{10.1002/sim.4780120315}}
 
 \bibitem[\citeproctext]{ref-morris2019using}
 \CSLLeftMargin{23. }%
-\CSLRightInline{Morris TP, White IR, Crowther MJ. Using simulation
-studies to evaluate statistical methods. \emph{Statistics in Medicine}.
-2019;38(11):2074-2102.
-doi:\href{https://doi.org/10.1002/sim.8086}{10.1002/sim.8086}}
+\CSLRightInline{Morris TP, White IR, Crowther MJ. Using simulation studies to evaluate statistical methods. \emph{Statistics in Medicine}. 2019;38(11):2074-2102. doi:\href{https://doi.org/10.1002/sim.8086}{10.1002/sim.8086}}
 
 \end{CSLReferences}
 
