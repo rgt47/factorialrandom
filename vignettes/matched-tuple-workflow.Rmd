@@ -1,0 +1,127 @@
+---
+title: "Matched-Tuple Randomization Workflow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Matched-Tuple Randomization Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = '#>'
+)
+```
+
+This vignette walks through the core `factorialrandom` workflow
+for a $2 \times 2$ factorial design ($k = 4$): form matched
+tuples from baseline covariates, randomize treatment within
+tuples, and estimate factorial effects.
+
+```{r setup}
+library(factorialrandom)
+set.seed(20260816)
+```
+
+## 1. Simulate baseline covariates
+
+In practice, `dat` would be a data.frame of characterized
+trial-ready-cohort subjects. Here we simulate a small pool.
+
+```{r simulate-data}
+n_pool <- 80
+dat <- data.frame(
+  X1 = rnorm(n_pool),
+  X2 = rnorm(n_pool),
+  X3 = rnorm(n_pool)
+)
+head(dat)
+```
+
+## 2. Form matched tuples
+
+`match_tuples()` partitions the pool into tuples of size `k`
+(here `k = 4`, for a $2 \times 2$ design) using Mahalanobis
+distance by default.
+
+```{r match-tuples}
+tuples <- match_tuples(
+  dat, k = 4L,
+  covariates = c('X1', 'X2', 'X3'),
+  distance = 'mahalanobis',
+  method = 'greedy'
+)
+tuples$n_tuples
+length(tuples$unmatched)
+```
+
+## 3. Randomize within tuples
+
+Each tuple's $k$ members are randomly assigned the $k$ distinct
+treatment combinations.
+
+```{r randomize}
+treatment <- randomize_tuples(tuples)
+table(treatment, useNA = 'ifany')
+```
+
+## 4. Check covariate balance
+
+`tuple_balance()` reports the maximum and mean absolute
+standardized mean difference (ASMD) across covariates and arms,
+for both matched designs and (with `tuples = NULL`) unmatched
+designs such as simple randomization.
+
+```{r balance}
+bal <- tuple_balance(dat, tuples, c('X1', 'X2', 'X3'), treatment)
+bal
+```
+
+## 5. Simulate outcomes and estimate effects
+
+`generate_factorial_trial()` wraps the above steps and adds
+simulated outcomes; `estimate_effects()` computes main-effect and
+interaction estimates with matched-tuple-appropriate standard
+errors.
+
+```{r estimate}
+trial <- generate_factorial_trial(
+  n = 80, n_factors = 2L, p_covariates = 3L,
+  r_squared = 0.3, tau_main = c(0.2, 0.2),
+  tau_interaction = 0.15, sigma_y = 1, cov_rho = 0.3,
+  randomization = 'matched', pool_ratio = 1.0
+)
+
+eff <- estimate_effects(
+  outcome = trial$data$y,
+  treatment = trial$treatment,
+  tuples = trial$tuples,
+  n_factors = 2L,
+  method = 'neyman'
+)
+eff
+```
+
+## 6. Unmatched designs
+
+For comparator designs (simple, stratified, rerandomization),
+`generate_factorial_trial()` returns `tuples = NULL`, and both
+`tuple_balance()` and `estimate_effects()` accept this directly.
+
+```{r unmatched}
+trial_simple <- generate_factorial_trial(
+  n = 80, n_factors = 2L, p_covariates = 3L,
+  randomization = 'simple'
+)
+is.null(trial_simple$tuples)
+
+eff_simple <- estimate_effects(
+  outcome = trial_simple$data$y,
+  treatment = trial_simple$treatment,
+  tuples = trial_simple$tuples,
+  n_factors = 2L,
+  method = 'neyman'
+)
+eff_simple
+```

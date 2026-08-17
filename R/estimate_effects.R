@@ -140,10 +140,21 @@ factorial_contrasts <- function(n_factors) {
   weight_mat <- matrix(NA, nrow = nrow(contrasts),
                         ncol = k)
 
+  # Standard Yates-style orthogonal-contrast normalization for a
+  # 2^n_factors design: divide by k/2 (the number of arms sharing
+  # each sign of the coded contrast), not by k. Dividing by k
+  # (the previous behavior) under-recovers every effect by a
+  # factor of 2, and compounds with the DGM's own scaling for
+  # higher-order contrasts (see dgm_factorial.R); fixed together
+  # during the 2026-08-16 remediation pass after the discrepancy
+  # was found empirically (estimated effects at roughly half to a
+  # quarter of the data-generating values).
+  half_k <- k / 2
+
   row_idx <- 0
   for (j in seq_len(n_factors)) {
     row_idx <- row_idx + 1
-    weight_mat[row_idx, ] <- coded[[paste0("F", j)]] / k
+    weight_mat[row_idx, ] <- coded[[paste0("F", j)]] / half_k
   }
 
   if (n_factors >= 2) {
@@ -152,7 +163,7 @@ factorial_contrasts <- function(n_factors) {
         row_idx <- row_idx + 1
         weight_mat[row_idx, ] <-
           coded[[paste0("F", a)]] *
-          coded[[paste0("F", b)]] / k
+          coded[[paste0("F", b)]] / half_k
       }
     }
   }
@@ -251,6 +262,17 @@ regression_adjustment <- function(outcome, treatment,
   arm_coefs[is.na(arm_coefs)] <- 0
   est_adj <- sum(weights * arm_coefs)
 
+  arm_means_unadj <- numeric(k)
+  for (a in seq_len(k)) {
+    idx <- which(treatment == (a - 1))
+    arm_means_unadj[a] <- if (length(idx) > 0) {
+      mean(outcome[idx])
+    } else {
+      0
+    }
+  }
+  est_unadj <- sum(weights * arm_means_unadj)
+
   resid <- fit$residuals
   arm_resid_vars <- numeric(k)
   arm_ns <- integer(k)
@@ -266,8 +288,12 @@ regression_adjustment <- function(outcome, treatment,
 
   se_adj <- sqrt(sum(weights^2 * arm_resid_vars / arm_ns))
 
+  # `est_unadj` is the unadjusted difference-in-means passed in via
+  # `outcome`/`treatment` (matched subset); `correction` is subtracted
+  # from that same unadjusted estimate in estimate_effects(), so
+  # est - correction == est_unadj - (est_unadj - est_adj) == est_adj.
   list(
-    correction = est_adj - sum(weights * arm_coefs),
+    correction = est_unadj - est_adj,
     se = se_adj
   )
 }

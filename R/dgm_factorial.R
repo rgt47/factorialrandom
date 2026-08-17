@@ -117,8 +117,17 @@ generate_factorial_trial <- function(
   if (n_factors >= 2 && tau_interaction != 0) {
     coded_1 <- 2 * trt_factors$F1 - 1
     coded_2 <- 2 * trt_factors$F2 - 1
+    # Divisor matches the main-effect scaling above (sigma_y *
+    # coded / 2), so that the standard orthogonal-contrast
+    # estimator in factorial_contrasts() (weight = coded / (k/2))
+    # recovers `tau_interaction * sigma_y` exactly, consistent
+    # with `true_tau` in compute_performance(). Previously this
+    # divided by 4, inconsistent with the main-effect divisor of
+    # 2, which under-recovered the interaction effect even after
+    # the factorial_contrasts() normalization fix (found and
+    # fixed together during the 2026-08-16 remediation pass).
     y <- y + tau_interaction * sigma_y *
-      coded_1 * coded_2 / 4
+      coded_1 * coded_2 / 2
   }
 
   y <- y + stats::rnorm(n_actual, 0,

@@ -16,13 +16,19 @@ abstract: |
   factorial treatment combinations -- and each member of a
   tuple is assigned to a distinct treatment arm. We derive
   the randomization distribution, variance estimators, and
-  efficiency gains relative to simple and stratified
+  an asymptotic relative-efficiency result versus simple
   randomization. A simulation study evaluates operating
-  characteristics under scenarios motivated by Alzheimer's
-  disease prevention trials, where trial-ready cohorts
-  provide large pools of characterized subjects amenable to
-  matching. Software implementing the proposed methods is
-  provided in the R package `factorialrandom`.
+  characteristics of the matched-tuple design itself (at two
+  pool-oversampling ratios) under scenarios motivated by
+  Alzheimer's disease prevention trials, where trial-ready
+  cohorts provide large pools of characterized subjects
+  amenable to matching; a head-to-head empirical comparison
+  against simple, stratified, and rerandomization baselines
+  is set up in the same simulation grid but had not yet been
+  regenerated as of this draft (see the Provenance note in
+  Results) and so is not yet reported. Software implementing
+  the proposed methods is provided in the R package
+  `factorialrandom`.
 output:
   bookdown::pdf_document2:
     latex_engine: xelatex
@@ -389,26 +395,27 @@ where $\mathcal{P} = \{\mathcal{T}_1, \ldots,
 \mathcal{T}_M\}$ is a partition into tuples.
 
 For $k = 2$, this is optimal pair matching, solvable in
-polynomial time. For $k > 2$, we consider three approaches:
+polynomial time. For $k > 2$ the exact partition problem is
+combinatorially hard, and the `factorialrandom` package
+currently implements one heuristic:
 
 1. **Sequential greedy.** Select a seed subject, find the
    $k-1$ nearest neighbors, form a tuple, remove from pool,
    repeat. Order seeds by distance to the pool centroid
    (outermost first) to avoid stranding outliers.
+   Implemented as `match_tuples(..., method = "greedy")`.
 
-2. **Hierarchical clustering.** Perform agglomerative
-   clustering (Ward's method or complete linkage) and cut at
-   the level producing $M$ clusters of size $k$. Post-process
-   to enforce exact size $k$ by splitting large clusters and
-   merging small ones.
-
-3. **Integer programming.** Formulate as an assignment
-   problem: define binary variables $x_{im} = 1$ if subject
-   $i$ is assigned to tuple $m$, and solve the integer program
-   with constraints $\sum_m x_{im} = 1$ for all $i$ and
-   $\sum_i x_{im} = k$ for all $m$, minimizing total
-   within-tuple distance. Feasible for $N \lesssim 1000$
-   using standard solvers.
+Hierarchical clustering and integer-programming formulations
+of the same partition problem are natural extensions -- and
+were part of the original design plan (see
+`docs/analysis-plan.md`, Aim 1) -- but are not implemented in
+the current package: `match_tuples(..., method = "optimal")`
+currently aliases to the greedy heuristic rather than solving
+an integer program, and no hierarchical-clustering code path
+exists. All simulation results and package behavior described
+below reflect the greedy heuristic only; benchmarking
+alternative tuple-formation algorithms is left to future
+work.
 
 ### Pool Oversampling
 
@@ -501,7 +508,12 @@ $N - k$. Under matched-tuple randomization, the effective
 degrees of freedom are $M - 1 = N/k - 1$. When $k$ is large
 and $M$ is small, this loss can offset precision gains from
 matching, particularly for coverage of confidence intervals
-[@martinMatchingPower1993].
+[@martinMatchingPower1993, pp. 329-338]. The rule-of-thumb
+threshold ($M > 30$) used in the Discussion is offered as a
+heuristic consistent with the general degrees-of-freedom
+argument in that source, not a value derived or directly
+quoted from it; no page-specific numeric threshold from
+@martinMatchingPower1993 is reproduced here.
 
 # Simulation Study
 
@@ -519,21 +531,19 @@ dgm_params <- data.frame(
     'Total sample size ($N$)',
     'Covariate dimension ($p$)',
     'Prognostic strength ($R^2$)',
-    'Main effect A (SD units)',
-    'Main effect B (SD units)',
+    'Main effects A and B (SD units, equal)',
     'Interaction AB (SD units)',
-    'Pool/sample ratio ($r$)',
+    'Pool/sample ratio ($r$), matched methods only',
     'Outcome distribution'
   ),
   Levels = c(
     '100, 200, 500',
     '3, 8',
     '0.1, 0.3, 0.5',
-    '0, 0.2, 0.5',
-    '0, 0.2, 0.5',
+    '0, 0.2',
     '0, 0.15',
-    '1.0, 1.5, 2.0, 3.0',
-    'Normal, skewed'
+    '1.0, 2.0',
+    'Normal'
   )
 )
 kable(
@@ -566,17 +576,17 @@ comps <- data.frame(
   Method = c(
     'Simple randomization',
     'Stratified randomization',
-    'Minimization (Pocock-Simon)',
     'Rerandomization (Mahalanobis)',
-    'Matched-tuple (proposed)'
+    'Matched-tuple, pool ratio 1.0 (proposed)',
+    'Matched-tuple, pool ratio 2.0 (proposed)'
   ),
   Description = c(
     'Equal probability, no covariate balancing',
-    'Stratify on top 2 covariates (quartiles)',
-    'Dynamic balancing on all covariates',
+    'Stratify on top-2-covariate quartiles, permuted blocks',
     paste0('Accept allocations with ',
       '$M < \\chi^2_{p,0.001}$'),
-    'Optimal $k$-tuples, random within-tuple'
+    'Greedy $k$-tuples, random within-tuple, no oversampling',
+    'Greedy $k$-tuples from a 2x pool, best tuples retained'
   )
 )
 kable(
@@ -590,6 +600,19 @@ kable(
     font_size = 10
   )
 ```
+
+`docs/analysis-plan.md` originally listed minimization
+(Pocock-Simon dynamic balancing) as a fifth comparator.
+Minimization is omitted from the simulation because it is a
+sequential-enrollment procedure: it balances covariates as
+subjects arrive one at a time, which is not the setting this
+paper addresses (a fully characterized pool available before
+randomization). Rerandomization and matched-tuple
+randomization are both pool-based comparators and so provide
+a more direct contrast with the proposed method; minimization
+is discussed as background in `docs/literature-review.md`
+but is not implemented in `factorialrandom` and not simulated
+here.
 
 ### Evaluation Metrics
 
@@ -616,40 +639,74 @@ perf_path <- file.path(
 perf <- if (file.exists(perf_path)) readRDS(perf_path) else NULL
 
 if (!is.null(perf)) {
-  # Production run hit the 30-min cap at ~25 of 72 scenarios.
-  # `perf` contains whichever scenarios completed. Row names encode
-  # method, F1, and adjustment; parse true_tau + n_reps from columns.
   abs_bias_max <- max(abs(perf$bias), na.rm = TRUE)
   cov_range <- range(perf$coverage, na.rm = TRUE)
   rej_range <- range(perf$rejection_rate, na.rm = TRUE)
   n_scen_done <- nrow(perf)
+  methods_done <- sort(unique(perf$method))
+  n_methods_done <- length(methods_done)
 } else {
   abs_bias_max <- NA_real_
   cov_range <- c(NA_real_, NA_real_)
   rej_range <- c(NA_real_, NA_real_)
   n_scen_done <- 0
+  methods_done <- character(0)
+  n_methods_done <- 0
 }
 ```
 
-**Provenance.** The full factorial sweep completed at 2,000
-replicates per cell, producing the
-`r n_scen_done` scenario-method-estimator rows in
-`sim_performance.rds`. Across those rows, absolute bias never
-exceeded
+**Provenance.** *As of this draft, `sim_performance.rds` was
+produced before the `tuple_balance()` and
+`regression_adjustment()` bug fixes described below were
+applied, and covers only
+`r n_methods_done` of the 5 planned randomization methods
+(`r paste(methods_done, collapse = ", ")`).* Root cause: prior
+to the fix, `tuple_balance()` crashed on `tuples = NULL`
+(the value returned by `generate_factorial_trial()` for
+every non-matched method), and `run_condition()` wrapped
+each replicate in a `tryCatch()` that discarded the error, so
+every replicate for `simple`, `stratified`, and
+`rerandomization` failed silently across all scenarios. That
+crash is now fixed (`tuple_balance()` treats `tuples = NULL`
+as an unmatched design and computes raw covariate SMDs
+across `treatment` directly), and `run_condition()` now
+reports a warning with an error count instead of failing
+silently. A reduced-scale check (4 scenarios, 20 replicates,
+all 5 methods) after the fix produced non-NA bias, coverage,
+and rejection-rate estimates for every method; see
+`docs/pub_review_remediation_2026-08-16.md` for that
+verification run.
+Within the `r n_scen_done` scenario-method-estimator rows
+that are currently on disk, absolute bias never exceeded
 `r if (is.finite(abs_bias_max)) sprintf('%.3f', abs_bias_max) else 'NA'`,
 coverage of 95% CIs fell in
 [`r if (all(is.finite(cov_range))) sprintf('%.3f', cov_range[1]) else 'NA'`,
 `r if (all(is.finite(cov_range))) sprintf('%.3f', cov_range[2]) else 'NA'`],
 and rejection rate in
 [`r if (all(is.finite(rej_range))) sprintf('%.3f', rej_range[1]) else 'NA'`,
-`r if (all(is.finite(rej_range))) sprintf('%.3f', rej_range[2]) else 'NA'`].
-The earlier audit at
-`docs/morris-audit-2026-04-17.md` predates the completed run
-and is retained for historical reference.
+`r if (all(is.finite(rej_range))) sprintf('%.3f', rej_range[2]) else 'NA'`],
+but these ranges characterize matched-tuple designs only
+(`matched_1.0`/`matched_2.0`), not a comparison against
+simple, stratified, or rerandomization baselines,
+and every figure and table below inherits that limitation
+until the sweep is regenerated.
+**TODO (before submission):** re-run
+`Rscript analysis/scripts/01_run_simulation.R` in full (all 5
+methods x 72 scenarios x 2,000 replicates) with the code
+fixes in place, then regenerate this section and every
+downstream figure/table from the new
+`sim_performance.rds`. A full-scale rerun was not attempted
+during this remediation pass: a reduced-scale timing check
+(4 scenarios x 5 methods x 20 replicates, single core) took
+about 13 seconds, which extrapolates to several hours for the
+full 72 x 5 x 2,000 grid on a single core; running the full
+sweep, or parallelizing `run_condition()` calls across
+scenarios/methods (the script already loads the `parallel`
+package but does not currently use it), is left to the user.
 
 ### Covariate Balance
 
-```{r balance-asmd, fig.cap='Mean of the maximum absolute standardized mean difference across covariates by randomization method, prognostic strength ($R^2$), and sample size. Matched-tuple randomization with 2x pool oversampling (matched\\_2.0) consistently outperforms 1x matching (matched\\_1.0).'}
+```{r balance-asmd, fig.cap='Mean of the maximum absolute standardized mean difference across covariates by randomization method, prognostic strength ($R^2$), and sample size, for the matched-tuple methods currently in `sim\\_performance.rds` (matched\\_1.0, matched\\_2.0; see the Provenance note above).'}
 if (!is.null(perf)) {
   gd <- perf |>
     dplyr::filter(effect == "F1") |>
@@ -672,7 +729,7 @@ if (!is.null(perf)) {
 
 ### Efficiency Gains
 
-```{r efficiency-emp-se, fig.cap='Empirical SE of the main-effect estimator by prognostic strength ($R^2$) and sample size, separately for the three variance estimators (Neyman, paired, regression-adjusted). Adjusted estimation tightens the empirical SE as $R^2$ rises, consistent with the efficiency theory in the Methods.'}
+```{r efficiency-emp-se, fig.cap='Empirical SE of the main-effect estimator by prognostic strength ($R^2$) and sample size, separately for the three variance estimators (Neyman, paired, regression-adjusted). Data predate the \\texttt{regression\\_adjustment()} point-estimate fix described in the text; the adjusted and Neyman point estimates in this run were identical by construction, so this panel should be regenerated from the corrected simulation before being used to support any claim about the adjusted estimator.'}
 if (!is.null(perf)) {
   gd <- perf |>
     dplyr::filter(effect == "F1", method == "matched_2.0") |>
@@ -725,6 +782,46 @@ if (!is.null(perf)) {
 }
 ```
 
+**Monte Carlo standard error.** Table
+\@ref(tab:mcse-table) reports the Monte Carlo standard errors
+(MCSE) of the bias, coverage, and rejection-rate estimates
+above, computed per Morris, White, and Crowther
+[-@morris2019using, Table 6] as
+$\text{MCSE}(\text{bias}) = \text{emp\_SE}/\sqrt{n_{\text{reps}}}$
+and
+$\text{MCSE}(p) = \sqrt{p(1-p)/n_{\text{reps}}}$ for the
+coverage and rejection proportions.
+
+```{r mcse-table}
+if (!is.null(perf)) {
+  mcse_tab <- perf |>
+    dplyr::filter(effect == "F1", estimator == "neyman") |>
+    dplyr::group_by(method) |>
+    dplyr::summarise(
+      mean_mcse_bias = mean(mcse_bias, na.rm = TRUE),
+      mean_mcse_coverage = mean(mcse_coverage, na.rm = TRUE),
+      mean_mcse_rejection = mean(mcse_rejection, na.rm = TRUE),
+      .groups = "drop"
+    )
+  names(mcse_tab) <- c("Method", "MCSE(bias)",
+                        "MCSE(coverage)", "MCSE(rejection)")
+  kable(
+    mcse_tab,
+    booktabs = TRUE,
+    digits = 4,
+    caption = paste0(
+      "Mean Monte Carlo standard errors of bias, coverage, ",
+      "and rejection-rate estimates (main effect F1, Neyman ",
+      "estimator), averaged over scenarios currently on disk."
+    )
+  ) |>
+    kable_styling(latex_options = c("hold_position"),
+                 font_size = 10)
+} else {
+  cat("*Awaiting `sim_performance.rds`.*")
+}
+```
+
 ### Effect of Pool Oversampling
 
 ```{r oversampling-relative-efficiency, fig.cap='Relative efficiency from 2x pool oversampling: ratio of empirical SE under matched\\_1.0 (no oversampling) to matched\\_2.0 (2x pool), by prognostic strength ($R^2$) and sample size. Values above 1 indicate that oversampling improves precision.'}
@@ -772,26 +869,112 @@ subjects drawn from a trial-ready cohort.
 - **Matching covariates:** amyloid PET (Centiloids), tau PET
   (SUVR), APOE4 carrier status, baseline PACC score, age
 - **Primary endpoint:** Change in PACC at 4 years
+- **Simulated prognostic strength, effects (design choice):**
+  $R^2 = 0.3$, main effects $0.2$ SD each, interaction $0.15$
+  SD. These are illustrative values chosen to sit in the
+  middle of the main simulation grid (Table
+  \@ref(tab:dgm-params)); they are not fitted to any specific
+  AHEAD-3-45 pilot data.
 
-```{r application-note, results='asis'}
-cat("*A full worked example on simulated TRC-like data is",
-    "reserved for a companion paper. The performance",
-    "characteristics in the simulation tables above are",
-    "directly applicable to a 2,000-participant pool",
-    "matched into tuples of size 4 for a factorial",
-    "anti-amyloid-by-tau trial; the design tables in",
-    "the next subsection summarise the expected matching",
-    "quality, treatment-effect estimation precision, and",
-    "coverage for that scenario.*")
+```{r application-data, include=FALSE}
+app_path <- file.path(
+  here::here(), "analysis", "data", "derived_data",
+  "application_example.rds"
+)
+app_perf <- if (file.exists(app_path)) readRDS(app_path) else NULL
 ```
+
+The tables below are generated from a design-specific
+simulation at the parameters listed above ($N_{\text{pool}} =
+2{,}000$, $N = 500$, $r = 4.0$, $k = 4$, prognostic $R^2 =
+0.3$, main effects $0.2$ SD, interaction $0.15$ SD), run in
+`analysis/scripts/02_application_example.R`. This run uses
+`r if (!is.null(app_perf)) unique(app_perf$n_reps) else "NA"`
+replicates per method rather than the 2,000 used in the main
+simulation grid (Results), so the numbers below are
+illustrative of the design's operating characteristics, not
+precision-matched to the main study; a full worked example
+with 2,000 replicates is left as future work (see
+`docs/pub_review_remediation_2026-08-16.md`).
 
 ## Matching Quality
 
+```{r application-balance}
+if (!is.null(app_perf)) {
+  bal_tab <- app_perf |>
+    dplyr::filter(effect == "F1") |>
+    dplyr::select(method, mean_max_asmd)
+  names(bal_tab) <- c("Method", "Mean max ASMD")
+  kable(
+    bal_tab,
+    booktabs = TRUE,
+    digits = 3,
+    caption = paste0(
+      "Covariate balance at the AHEAD-3-45-like design point ",
+      "(N = 500, pool = 2,000, k = 4), by randomization ",
+      "method."
+    )
+  ) |>
+    kable_styling(latex_options = c("hold_position"),
+                 font_size = 10)
+} else {
+  cat("*Awaiting `application_example.rds`; run",
+      "`analysis/scripts/02_application_example.R`.*")
+}
+```
+
 ## Treatment Effect Estimation
+
+```{r application-estimation}
+if (!is.null(app_perf)) {
+  est_tab <- app_perf |>
+    dplyr::filter(effect %in% c("F1", "F1:F2")) |>
+    dplyr::select(method, effect, bias, emp_se, coverage,
+                 rejection_rate)
+  names(est_tab) <- c("Method", "Effect", "Bias", "Empirical SE",
+                      "Coverage", "Rejection rate")
+  kable(
+    est_tab,
+    booktabs = TRUE,
+    digits = 3,
+    caption = paste0(
+      "Bias, empirical SE, 95% CI coverage, and rejection ",
+      "rate for the anti-amyloid main effect (F1) and the ",
+      "anti-amyloid-by-tau interaction (F1:F2) at the ",
+      "AHEAD-3-45-like design point, Neyman estimator."
+    )
+  ) |>
+    kable_styling(latex_options = c("hold_position"),
+                 font_size = 9)
+} else {
+  cat("*Awaiting `application_example.rds`; run",
+      "`analysis/scripts/02_application_example.R`.*")
+}
+```
 
 # Discussion
 
 ## Summary of Findings
+
+This manuscript develops matched-tuple randomization for
+factorial designs: a greedy tuple-formation algorithm, exact
+and conservative variance estimators, a regression-adjusted
+estimator, and an asymptotic relative-efficiency result
+versus simple randomization. The simulation and worked
+example currently on disk (Results; Application) characterize
+the operating characteristics of the matched-tuple design
+itself, at one and two/four times pool oversampling, across
+72 data-generating scenarios plus one AHEAD-3-45-like design
+point. As documented in the Provenance note in Results, the
+head-to-head empirical comparison against simple, stratified,
+and rerandomization baselines -- the paper's central claimed
+contribution -- has not yet been regenerated following a bug
+fix to the covariate-balance diagnostic, and so is not yet
+part of the evidence base for this draft. Until that
+comparison exists, the claim that matched-tuple randomization
+improves precision relative to those baselines should be read
+as a theoretical prediction (Efficiency Analysis) rather than
+an established empirical finding.
 
 ## Practical Considerations
 
@@ -803,9 +986,14 @@ Matched-tuple randomization is most advantageous when:
    (as in trial-ready cohorts), permitting global rather than
    sequential matching.
 2. Strong prognostic covariates are measured at baseline.
-3. The number of factorial arms $k$ is not too large ($k \le
-   8$, i.e., up to $2^3$ designs), to avoid excessive
-   degrees-of-freedom loss.
+3. The number of factorial arms $k$ is not too large, to
+   avoid excessive degrees-of-freedom loss. The simulation
+   and application in this manuscript test only $k = 4$
+   ($2^2$ designs); larger $k$ (e.g., $k = 8$ for a $2^3$
+   design) is expected to be more susceptible to the
+   degrees-of-freedom tradeoff discussed below but has not
+   been simulated here, so no specific upper bound on $k$ is
+   asserted.
 4. The pool-to-sample ratio $r$ exceeds 1, providing excess
    subjects for quality matching.
 
@@ -818,12 +1006,19 @@ $M - 1$, compared to $N - k$ under simple randomization.
 This concern is attenuated when $N$ is large enough that
 $M = N/k$ remains sufficient (e.g., $M > 30$).
 
-A second limitation is computational. Optimal $k$-tuple
-formation by integer programming is feasible for $N \lesssim
-1000$ but may require heuristic approaches for larger pools.
-In the TRC setting, pool sizes of 1,000 to 2,000 characterized
-subjects are typical, placing the problem within the tractable
-range.
+A second limitation is computational, though of a different
+character than originally framed: the package currently ships
+only the greedy heuristic (Tuple Formation), which is
+$O(N^2)$ in the pairwise distance computation and scales
+comfortably to the pool sizes (1,000 to 2,000 characterized
+subjects) typical of the TRC setting. An exact
+integer-programming formulation, which would guarantee a
+globally optimal partition rather than the greedy
+approximation, is a natural extension but has not been
+implemented or benchmarked in this repository; its
+feasibility for $N$ in the low thousands is plausible given
+published assignment-problem solve times but is not verified
+here.
 
 ### Relation to Rerandomization
 
@@ -856,19 +1051,71 @@ Several extensions merit further investigation:
 
 # References
 
+## Data and Code Availability
+
+```{r sys-info, include=FALSE}
+r_version <- paste(R.version$major, R.version$minor, sep = ".")
+pkg_version <- tryCatch(
+  as.character(utils::packageVersion("factorialrandom")),
+  error = function(e) "unknown"
+)
+mass_version <- tryCatch(
+  as.character(utils::packageVersion("MASS")),
+  error = function(e) "unknown"
+)
+sys_name <- Sys.info()[["sysname"]]
+```
+
+All source code (R package `factorialrandom`, simulation
+drivers, and this manuscript) is version-controlled in the
+repository at `~/prj/res/16-factorial-matched-random`
+(inner package repository `factorialrandom`). The main
+simulation grid is produced by
+`analysis/scripts/01_run_simulation.R` and saved to
+`analysis/data/derived_data/sim_performance.rds`; the
+Application section's worked example is produced by
+`analysis/scripts/02_application_example.R` and saved to
+`analysis/data/derived_data/application_example.rds`. No
+external or restricted-access data are used; all covariate
+and outcome data are simulated. This document was rendered
+with R `r r_version` on `r sys_name`, package
+`factorialrandom` version `r pkg_version`, and `MASS` version
+`r mass_version`. Wall-clock time for the full simulation
+sweep (5 methods x 72 scenarios x 2,000 replicates) has not
+been recorded for the corrected code (see the Provenance note
+in Results); a reduced-scale timing check on a single core
+(20 replicates x 4 scenarios x 5 methods) took approximately
+13 seconds, i.e., roughly 32 ms per replicate-method call.
+
 ## Morris et al. (2019) ADEMP Compliance
 
 We audited this simulation study against the reporting standards
-proposed by Morris, White, and Crowther [-@morris2019using]. The full
-audit is at `docs/morris-audit-2026-04-17.md`.
+proposed by Morris, White, and Crowther [-@morris2019using]. The
+original audit is at `docs/morris-audit-2026-04-17.md`; the summary
+below reflects the current state of `analysis/scripts/01_run_simulation.R`
+and `report.Rmd` as of the 2026-08-16 remediation pass (see
+`docs/pub_review_remediation_2026-08-16.md`), not the stale April 17
+narrative.
 
-**Verdict:** Mostly compliant.
+**Verdict:** Mostly compliant, with one open gap.
 
-**Key gaps identified:**
+**Resolved since the April 17 audit:**
 
-- `n_replicates = 2000` not justified via a Monte Carlo SE target.
-- MCSE columns are computed but not wired into the report tables — TODO placeholders remain around `report.Rmd:605-649`.
-- `RNGkind('L\'Ecuyer-CMRG')` not pinned; no per-replicate `.Random.seed` snapshot stored.
+- `n_replicates = 2000` is now justified via an MCSE target,
+  documented in a comment at `01_run_simulation.R:11-15`.
+- `RNGkind("L'Ecuyer-CMRG")` is pinned immediately before
+  `set.seed()` at `01_run_simulation.R:278-279`.
+- The MCSE columns (`mcse_bias`, `mcse_coverage`,
+  `mcse_rejection`) are now surfaced in Table
+  \@ref(tab:mcse-table) above, rather than left as TODO
+  placeholders.
 
-A remediation plan is recorded in the audit file and will be
-taken up in a subsequent revision.
+**Still open:**
+
+- No per-replicate `.Random.seed` snapshot is stored, so an
+  individual replicate cannot be reproduced in isolation
+  (only the full sweep, via the single fixed seed).
+- The full simulation sweep still needs to be rerun following
+  the `tuple_balance()` and `regression_adjustment()` bug
+  fixes described in Results; see the Provenance note above
+  for the exact command.

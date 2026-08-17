@@ -160,15 +160,34 @@ run_condition <- function(scenario_idx, method_label,
   ))
 
   rep_results <- vector("list", n_reps)
+  n_errors <- 0L
+  first_error <- NULL
   for (r in seq_len(n_reps)) {
     rep_results[[r]] <- tryCatch(
       run_one_replicate(scenario, method_label),
-      error = function(e) NULL
+      error = function(e) {
+        n_errors <<- n_errors + 1L
+        if (is.null(first_error)) first_error <<- conditionMessage(e)
+        NULL
+      }
     )
   }
 
+  if (n_errors > 0L) {
+    cat(sprintf(
+      "  WARNING: %d/%d replicates failed for %s (first error: %s)\n",
+      n_errors, n_reps, method_label, first_error
+    ))
+  }
+
   valid <- !vapply(rep_results, is.null, logical(1))
-  if (sum(valid) == 0) return(NULL)
+  if (sum(valid) == 0) {
+    warning(sprintf(
+      "run_condition: all %d replicates failed for scenario %d, method %s",
+      n_reps, scenario_idx, method_label
+    ))
+    return(NULL)
+  }
 
   all_reps <- do.call(rbind, rep_results[valid])
   all_reps$replicate <- rep(

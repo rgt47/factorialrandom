@@ -186,14 +186,21 @@ trim_to_best_tuples <- function(result, dist_mat,
 #' Compute within-tuple balance diagnostics
 #'
 #' @param data data.frame of subject data.
-#' @param tuples Matching result from match_tuples.
+#' @param tuples Matching result from match_tuples, or
+#'   `NULL` for unmatched designs (simple, stratified,
+#'   rerandomization). When `NULL`, balance is computed
+#'   across the full sample rather than within tuples.
 #' @param covariates Character vector of covariate names.
 #' @param treatment Integer vector of treatment assignments.
 #' @return A data.frame with balance statistics.
 #' @export
 tuple_balance <- function(data, tuples, covariates,
                           treatment) {
-  matched <- !is.na(tuples$tuple_id)
+  matched <- if (is.null(tuples)) {
+    rep(TRUE, nrow(data))
+  } else {
+    !is.na(tuples$tuple_id)
+  }
   dat <- data[matched, ]
   trt <- treatment[matched]
 
