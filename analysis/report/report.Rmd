@@ -5,30 +5,28 @@ title: 'Matched-Tuple Randomization for Factorial Clinical
 author: 'Ronald G. Thomas, Ph.D.\thanks{Wertheim School of Public Health, UCSD; ORCID: 0000-0003-1686-4965}'
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 abstract: |
-  Factorial clinical trial designs efficiently evaluate
-  multiple treatment factors simultaneously, but covariate
-  balance across the resulting treatment combinations is
-  difficult to achieve through simple randomization,
-  particularly in moderate sample sizes. We propose
-  matched-tuple randomization, in which subjects are grouped
-  into sets of $k$ individuals with similar baseline
-  covariate profiles -- where $k$ equals the number of
-  factorial treatment combinations -- and each member of a
-  tuple is assigned to a distinct treatment arm. We derive
-  the randomization distribution, variance estimators, and
-  an asymptotic relative-efficiency result versus simple
-  randomization. A simulation study evaluates operating
-  characteristics of the matched-tuple design itself (at two
-  pool-oversampling ratios) under scenarios motivated by
+  Factorial clinical trial designs efficiently evaluate multiple
+  treatment factors simultaneously. However, covariate balance
+  across the resulting treatment combinations is difficult to
+  achieve through simple randomization, particularly in moderate
+  sample sizes. We propose matched-tuple randomization, in which
+  subjects are grouped into sets of $k$ individuals with similar
+  baseline covariate profiles, where $k$ equals the number of
+  factorial treatment combinations, and each member of a tuple
+  is assigned to a distinct treatment arm. We derive the
+  randomization distribution, variance estimators, and an
+  asymptotic relative-efficiency result versus simple
+  randomization. We evaluate the operating characteristics of
+  the matched-tuple design itself, at two pool-oversampling
+  ratios, in a simulation study under scenarios motivated by
   Alzheimer's disease prevention trials, where trial-ready
-  cohorts provide large pools of characterized subjects
-  amenable to matching; a head-to-head empirical comparison
-  against simple, stratified, and rerandomization baselines
-  is set up in the same simulation grid but had not yet been
-  regenerated as of this draft (see the Provenance note in
-  Results) and so is not yet reported. Software implementing
-  the proposed methods is provided in the R package
-  `factorialrandom`.
+  cohorts provide large pools of characterized subjects amenable
+  to matching. A head-to-head empirical comparison against
+  simple, stratified, and rerandomization baselines is set up in
+  the same simulation grid, but it had not yet been regenerated
+  as of this draft (see the Provenance note in Results) and so
+  it is not yet reported. We provide software implementing the
+  proposed methods in the R package `factorialrandom`.
 output:
   bookdown::pdf_document2:
     latex_engine: xelatex
