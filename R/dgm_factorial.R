@@ -79,9 +79,13 @@ generate_factorial_trial <- function(
   } else if (randomization == "stratified") {
     data <- data[seq_len(n), ]
     X <- X[seq_len(n), , drop = FALSE]
-    data$X1_cat <- as.integer(
-      cut(data$X1, breaks = 4)
-    )
+    # Sample quartiles of X1 (equal-count strata). cut(breaks = 4)
+    # gave equal-width intervals, not quartiles.
+    data$X1_cat <- as.integer(cut(
+      data$X1,
+      breaks = stats::quantile(data$X1, probs = 0:4 / 4),
+      include.lowest = TRUE
+    ))
     trt <- randomize_stratified_factorial(
       data, strat_vars = "X1_cat", k = k
     )
@@ -106,7 +110,7 @@ generate_factorial_trial <- function(
                         drop = FALSE]
 
   beta <- compute_beta_for_r2(p_covariates, r_squared,
-                              sigma_y)
+                              sigma_y, Sigma_x = Sigma_x)
   y <- as.numeric(X %*% beta)
 
   for (j in seq_len(min(n_factors, length(tau_main)))) {
@@ -149,13 +153,27 @@ generate_factorial_trial <- function(
 
 #' Compute beta coefficients to achieve target R-squared
 #'
+#' Equal weights, scaled so that `Var(X'beta) =
+#' sigma_y^2 * r_squared` under covariate covariance
+#' `Sigma_x`. With residual variance
+#' `sigma_y^2 * (1 - r_squared)`, the control-arm outcome
+#' then has variance `sigma_y^2` and population R-squared
+#' `r_squared`.
+#'
 #' @param p Integer. Number of covariates.
 #' @param r_squared Numeric. Target R-squared.
 #' @param sigma_y Numeric. Outcome SD.
+#' @param Sigma_x Covariate covariance matrix (default
+#'   identity).
 #' @return Numeric vector of beta coefficients.
 #' @keywords internal
-compute_beta_for_r2 <- function(p, r_squared, sigma_y) {
+compute_beta_for_r2 <- function(p, r_squared, sigma_y,
+                                Sigma_x = diag(p)) {
   if (r_squared <= 0) return(rep(0, p))
-  raw <- rep(1 / sqrt(p), p)
-  raw * sigma_y * sqrt(r_squared)
+  raw <- rep(1, p)
+  # Without the quadratic-form scaling, correlated covariates
+  # inflate Var(X'beta) above the target (by 1.46x at p = 3,
+  # rho = 0.3), so the realized R-squared exceeded r_squared.
+  scale_q <- as.numeric(t(raw) %*% Sigma_x %*% raw)
+  raw * sigma_y * sqrt(r_squared / scale_q)
 }

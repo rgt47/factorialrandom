@@ -10,10 +10,14 @@
 #' @param tuples Matching result from match_tuples (NULL
 #'   for unmatched designs).
 #' @param n_factors Integer. Number of factors.
-#' @param covariates Optional matrix of covariates for
-#'   regression adjustment.
-#' @param method Character. 'neyman' (default) for
-#'   Neyman-type variance, 'paired' for within-tuple.
+#' @param covariates Optional matrix of covariates. When
+#'   given, the estimate is Lin's fully interacted
+#'   regression adjustment with an HC2 standard error,
+#'   for matched and unmatched designs alike.
+#' @param method Character. 'neyman' (default) for the
+#'   unpaired Neyman variance with normal intervals, or
+#'   'paired' for the between-tuple variance of the
+#'   tuple-level contrasts with t intervals on M - 1 df.
 #' @return A data.frame with columns: effect, estimate,
 #'   se, ci_lower, ci_upper, p_value.
 #' @export
@@ -28,17 +32,10 @@ estimate_effects <- function(outcome,
   labels <- factorial_labels(n_factors)
   contrasts <- factorial_contrasts(n_factors)
 
-  results <- data.frame(
-    effect = character(0),
-    estimate = numeric(0),
-    se = numeric(0),
-    ci_lower = numeric(0),
-    ci_upper = numeric(0),
-    p_value = numeric(0)
-  )
+  n_c <- nrow(contrasts)
+  out_est <- out_se <- out_lo <- out_hi <- out_p <- numeric(n_c)
 
-  for (i in seq_len(nrow(contrasts))) {
-    cname <- contrasts$name[i]
+  for (i in seq_len(n_c)) {
     weights <- as.numeric(contrasts[i, -1])
 
     arm_means <- numeric(k)
@@ -65,15 +62,19 @@ estimate_effects <- function(outcome,
     }
 
     est <- sum(weights * arm_means)
+    df <- Inf
 
     if (!is.null(tuples) && method == "paired") {
       se <- paired_se(outcome, treatment, tuples,
                       weights, k)
+      # The between-tuple variance has M - 1 degrees of
+      # freedom, so intervals use t_{M-1}, not the normal.
+      df <- attr(se, "df")
     } else {
       se <- sqrt(sum(weights^2 * arm_vars / arm_ns))
     }
 
-    if (!is.null(covariates) && !is.null(tuples)) {
+    if (!is.null(covariates)) {
       adj <- regression_adjustment(
         outcome[matched], treatment[matched],
         covariates[matched, , drop = FALSE],
@@ -81,25 +82,41 @@ estimate_effects <- function(outcome,
       )
       est <- est - adj$correction
       se <- adj$se
+      df <- Inf
     }
 
-    p_val <- if (se > 0) {
-      2 * stats::pnorm(-abs(est / se))
+    se <- as.numeric(se)
+    crit <- if (is.finite(df)) {
+      stats::qt(0.975, df)
+    } else {
+      stats::qnorm(0.975)
+    }
+
+    p_val <- if (is.finite(se) && se > 0) {
+      if (is.finite(df)) {
+        2 * stats::pt(-abs(est / se), df)
+      } else {
+        2 * stats::pnorm(-abs(est / se))
+      }
     } else {
       NA_real_
     }
 
-    results <- rbind(results, data.frame(
-      effect = cname,
-      estimate = est,
-      se = se,
-      ci_lower = est - 1.96 * se,
-      ci_upper = est + 1.96 * se,
-      p_value = p_val
-    ))
+    out_est[i] <- est
+    out_se[i] <- se
+    out_lo[i] <- est - crit * se
+    out_hi[i] <- est + crit * se
+    out_p[i] <- p_val
   }
 
-  results
+  data.frame(
+    effect = contrasts$name,
+    estimate = out_est,
+    se = out_se,
+    ci_lower = out_lo,
+    ci_upper = out_hi,
+    p_value = out_p
+  )
 }
 
 #' Generate factorial contrast definitions
@@ -212,10 +229,10 @@ paired_se <- function(outcome, treatment, tuples,
   valid <- !is.na(tuple_contrasts)
   M_valid <- sum(valid)
 
-  if (M_valid < 2) return(NA_real_)
+  if (M_valid < 2) return(structure(NA_real_, df = Inf))
 
   tc <- tuple_contrasts[valid]
-  sqrt(stats::var(tc) / M_valid)
+  structure(sqrt(stats::var(tc) / M_valid), df = M_valid - 1)
 }
 
 #' Lin-style regression adjustment
@@ -273,20 +290,19 @@ regression_adjustment <- function(outcome, treatment,
   }
   est_unadj <- sum(weights * arm_means_unadj)
 
+  # HC2 sandwich variance of the arm intercepts (Lin, 2013).
+  # The earlier version plugged per-arm residual variances into
+  # the Neyman formula, which ignores the k * p fitted slopes.
   resid <- fit$residuals
-  arm_resid_vars <- numeric(k)
-  arm_ns <- integer(k)
-  for (a in seq_len(k)) {
-    idx <- which(treatment == (a - 1))
-    arm_ns[a] <- length(idx)
-    arm_resid_vars[a] <- if (length(idx) > 1) {
-      stats::var(resid[idx])
-    } else {
-      0
-    }
-  }
-
-  se_adj <- sqrt(sum(weights^2 * arm_resid_vars / arm_ns))
+  se_adj <- tryCatch({
+    xtx_inv <- solve(crossprod(design))
+    lev <- rowSums((design %*% xtx_inv) * design)
+    lev <- pmin(lev, 1 - 1e-8)
+    meat <- crossprod(design * (resid / sqrt(1 - lev)))
+    v <- xtx_inv %*% meat %*% xtx_inv
+    v_arm <- v[seq_len(k), seq_len(k)]
+    sqrt(as.numeric(t(weights) %*% v_arm %*% weights))
+  }, error = function(e) NA_real_)
 
   # `est_unadj` is the unadjusted difference-in-means passed in via
   # `outcome`/`treatment` (matched subset); `correction` is subtracted

@@ -116,77 +116,122 @@ randomize_block_factorial <- function(n, k) {
 
 #' Rerandomization for factorial design
 #'
-#' Repeatedly generate simple randomizations and accept
-#' only those where the Mahalanobis distance between arm
-#' covariate means is below a threshold.
+#' Repeatedly draws complete (equal-size) randomizations
+#' and accepts the first whose k-arm Mahalanobis balance
+#' statistic (see `mahalanobis_balance()`) falls below a
+#' threshold. Under complete randomization the statistic is
+#' asymptotically chi-squared with `p * (k - 1)` degrees of
+#' freedom, so the default threshold
+#' `qchisq(accept_prob, p * (k - 1))` gives an acceptance
+#' probability of about `accept_prob` (Morgan and Rubin,
+#' 2012; Branson, Dasgupta and Rubin, 2016).
 #'
 #' @param data data.frame.
 #' @param covariates Character vector of covariate names.
 #' @param k Integer. Number of treatment arms.
-#' @param threshold Numeric. Acceptance threshold for the
-#'   Mahalanobis criterion.
+#' @param threshold Numeric. Acceptance threshold. If
+#'   `NULL` (default), calibrated from `accept_prob`.
+#' @param accept_prob Numeric in (0, 1). Target acceptance
+#'   probability used when `threshold` is `NULL`.
 #' @param max_iter Integer. Maximum randomization attempts.
+#'   If none is accepted, the best draw is returned.
 #' @return Integer vector of assignments (0 to k-1).
 #' @export
 randomize_rerand_factorial <- function(data,
                                        covariates,
                                        k,
                                        threshold = NULL,
+                                       accept_prob = 0.001,
                                        max_iter = 10000L) {
   n <- nrow(data)
   p <- length(covariates)
   X <- as.matrix(data[, covariates, drop = FALSE])
 
   if (is.null(threshold)) {
-    threshold <- stats::qchisq(0.001, df = p * (k - 1))
+    threshold <- stats::qchisq(accept_prob, df = p * (k - 1))
   }
 
-  best_trt <- NULL
-  best_M <- Inf
-
-  for (iter in seq_len(max_iter)) {
-    trt <- sample(rep(0L:(k - 1L), length.out = n))
-    M_stat <- mahalanobis_balance(X, trt, k)
-
-    if (M_stat < threshold) {
-      return(trt)
-    }
-
-    if (M_stat < best_M) {
-      best_M <- M_stat
-      best_trt <- trt
-    }
-  }
-
-  best_trt
-}
-
-#' Compute Mahalanobis balance criterion for k arms
-#'
-#' @param X Numeric matrix (n x p).
-#' @param trt Integer vector of treatment assignments.
-#' @param k Integer. Number of arms.
-#' @return Numeric. Sum of pairwise Mahalanobis distances
-#'   between arm means.
-#' @keywords internal
-mahalanobis_balance <- function(X, trt, k) {
   S <- stats::cov(X)
   S_inv <- tryCatch(
     solve(S),
     error = function(e) MASS::ginv(S)
   )
+  base <- rep(0L:(k - 1L), length.out = n)
+  # Whitened, centered covariates: the statistic is then
+  # sum_a |colSums(Z[arm a, ])|^2 / n_a, computed per draw
+  # without re-deriving S or the grand mean.
+  Z <- scale(X, center = TRUE, scale = FALSE) %*%
+    t(chol(S_inv))
+  n_a <- tabulate(base + 1L, nbins = k)
+  slots <- lapply(seq_len(k), function(a) which(base == a - 1L))
 
-  arm_means <- lapply(0:(k - 1), function(a) {
-    colMeans(X[trt == a, , drop = FALSE])
-  })
+  # Draws are scored in batches for speed; the first accepted
+  # draw in sequence order is returned, so the accepted
+  # allocation has the same distribution as one-at-a-time
+  # rejection sampling.
+  batch <- 250L
+  best_perm <- NULL
+  best_M <- Inf
+  n_done <- 0L
 
-  total <- 0
-  for (a in seq_len(k - 1)) {
-    for (b in seq(a + 1, k)) {
-      diff <- arm_means[[a]] - arm_means[[b]]
-      total <- total +
-        as.numeric(t(diff) %*% S_inv %*% diff)
+  while (n_done < max_iter) {
+    b <- min(batch, max_iter - n_done)
+    perms <- replicate(b, sample.int(n))
+    stat <- numeric(b)
+    for (a in seq_len(k)) {
+      idx <- perms[slots[[a]], , drop = FALSE]
+      for (j in seq_len(ncol(Z))) {
+        s_aj <- colSums(matrix(Z[idx, j], nrow = n_a[a]))
+        stat <- stat + s_aj^2 / n_a[a]
+      }
     }
+    hit <- which(stat < threshold)
+    if (length(hit) > 0) {
+      best_perm <- perms[, hit[1]]
+      best_M <- stat[hit[1]]
+      break
+    }
+    if (min(stat) < best_M) {
+      best_M <- min(stat)
+      best_perm <- perms[, which.min(stat)]
+    }
+    n_done <- n_done + b
   }
-  total
+
+  trt <- integer(n)
+  trt[best_perm] <- base
+  trt
+}
+
+#' Compute the k-arm Mahalanobis balance criterion
+#'
+#' Computes `sum_a n_a (xbar_a - xbar)' S^{-1}
+#' (xbar_a - xbar)`, where `S` is the covariance of the
+#' individual covariates. Because `Var(xbar_a)` is about
+#' `S / n_a`, this is the Morgan-Rubin statistic generalized
+#' to k arms: under complete randomization it is
+#' asymptotically chi-squared on `p * (k - 1)` df. For
+#' `k = 2` it equals the Morgan-Rubin `M` statistic up to a
+#' finite-population factor.
+#'
+#' @param X Numeric matrix (n x p).
+#' @param trt Integer vector of treatment assignments.
+#' @param k Integer. Number of arms.
+#' @param S_inv Optional precomputed inverse covariance.
+#' @return Numeric scalar.
+#' @keywords internal
+mahalanobis_balance <- function(X, trt, k, S_inv = NULL) {
+  if (is.null(S_inv)) {
+    S <- stats::cov(X)
+    S_inv <- tryCatch(
+      solve(S),
+      error = function(e) MASS::ginv(S)
+    )
+  }
+  grand <- colMeans(X)
+  sums <- rowsum(X, trt, reorder = TRUE)
+  n_a <- tabulate(match(trt, sort(unique(trt))))
+  dev <- sums / n_a - matrix(grand, nrow = nrow(sums),
+                             ncol = ncol(X), byrow = TRUE)
+  sum(n_a * rowSums((dev %*% S_inv) * dev))
 }

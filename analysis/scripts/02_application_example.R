@@ -15,10 +15,20 @@
 ## a TODO to raise n_replicates once time allows.
 ## ──────────────────────────────────────────────────────────
 
-library(factorialrandom)
+## Usage (from the package root):
+##   Rscript analysis/scripts/02_application_example.R [n_reps] [n_cores]
+## The package is loaded from source so the run uses this
+## repository's R/ code.
+
+if (file.exists("DESCRIPTION")) {
+  pkgload::load_all(".", quiet = TRUE)
+} else {
+  library(factorialrandom)
+}
 library(MASS)
 
-n_replicates <- 300L
+args <- commandArgs(trailingOnly = TRUE)
+n_replicates <- if (length(args) >= 1) as.integer(args[1]) else 300L
 n_factors <- 2L
 k <- 2^n_factors
 sigma_y <- 1
@@ -118,10 +128,19 @@ run_condition <- function(method_label, n_reps = n_replicates) {
   all_reps
 }
 
+# One fixed seed per method, set inside the worker, so results
+# do not depend on the number of cores used.
 RNGkind("L'Ecuyer-CMRG")
-set.seed(20260816)
-
-raw <- do.call(rbind, lapply(randomization_methods, run_condition))
+base_seed <- 20260816L
+run_seeded <- function(i) {
+  set.seed(base_seed + i, kind = "L'Ecuyer-CMRG")
+  run_condition(randomization_methods[i])
+}
+n_cores <- if (length(args) >= 2) as.integer(args[2]) else 1L
+raw <- do.call(rbind, parallel::mclapply(
+  seq_along(randomization_methods), run_seeded,
+  mc.cores = n_cores, mc.preschedule = FALSE
+))
 
 true_tau <- c(
   F1 = application_scenario$tau_main_a * sigma_y,
@@ -150,6 +169,8 @@ performance <- do.call(rbind, lapply(
       coverage = coverage,
       rejection_rate = rejection_rate,
       mean_max_asmd = mean(df$max_asmd, na.rm = TRUE),
+      mcse_bias = emp_se / sqrt(B),
+      mcse_coverage = sqrt(coverage * (1 - coverage) / B),
       stringsAsFactors = FALSE
     )
   }

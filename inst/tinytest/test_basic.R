@@ -172,3 +172,72 @@ expect_false(is.null(trial_matched$tuples),
   info = "matched randomization returns a non-NULL tuples object")
 expect_equal(nrow(trial_matched$data), length(trial_matched$treatment),
   info = "data and treatment vector stay aligned after matching")
+
+## ── 2026-11 referee remediation (M4, M5, M7, DGM R^2) ────────
+
+## M4: the k-arm balance statistic is calibrated to chi^2 on
+## p (k - 1) df, so the nominal acceptance rate is achieved. The
+## earlier pairwise statistic on the individual-level covariance
+## accepted nearly every draw at a nominal rate of 0.001.
+set.seed(11)
+acc_rate <- function(n, p, k = 4L, pa = 0.05, draws = 1500L) {
+  X <- matrix(rnorm(n * p), n, p)
+  base <- rep(0L:(k - 1L), length.out = n)
+  thr <- qchisq(pa, p * (k - 1))
+  mean(replicate(draws,
+    factorialrandom:::mahalanobis_balance(X, sample(base), k) < thr))
+}
+for (cell in list(c(100, 3), c(500, 8))) {
+  r <- acc_rate(cell[1], cell[2])
+  expect_true(r > 0.025 && r < 0.08,
+    info = sprintf("acceptance rate near 0.05 at n=%d p=%d (got %.3f)",
+                   cell[1], cell[2], r))
+}
+
+set.seed(12)
+dat_rr <- data.frame(X1 = rnorm(100), X2 = rnorm(100), X3 = rnorm(100))
+trt_rr <- randomize_rerand_factorial(dat_rr, c("X1", "X2", "X3"),
+                                     k = 4L, accept_prob = 0.01)
+expect_equal(as.vector(table(trt_rr)), rep(25L, 4),
+  info = "rerandomization returns a complete (equal-size) allocation")
+stat_rr <- factorialrandom:::mahalanobis_balance(
+  as.matrix(dat_rr), trt_rr, 4L)
+expect_true(stat_rr < qchisq(0.01, 9),
+  info = "accepted rerandomization meets the calibrated threshold")
+
+## M5: stratified randomization uses sample quartiles of X1
+set.seed(13)
+tr_st <- generate_factorial_trial(n = 100, p_covariates = 3L,
+                                  randomization = "stratified")
+q_x1 <- cut(tr_st$data$X1, quantile(tr_st$data$X1, 0:4 / 4),
+            include.lowest = TRUE)
+expect_equal(as.vector(table(q_x1)), rep(25L, 4),
+  info = "X1 strata are equal-count quartiles")
+spread <- tapply(tr_st$treatment, q_x1,
+                 function(z) diff(range(tabulate(z + 1L, 4))))
+expect_true(all(spread <= 1),
+  info = "permuted blocks keep arms within 1 of each other per stratum")
+
+## DGM: beta is scaled so that Var(X'beta) = R^2 under AR(1)
+Sig <- outer(1:3, 1:3, function(i, j) 0.3^abs(i - j))
+b <- factorialrandom:::compute_beta_for_r2(3, 0.5, 1, Sigma_x = Sig)
+expect_equal(as.numeric(t(b) %*% Sig %*% b), 0.5,
+  info = "linear predictor variance equals target R^2")
+
+## M7: paired intervals use t on M - 1 df; adjusted SE is HC2
+set.seed(14)
+tr_p <- generate_factorial_trial(n = 100, p_covariates = 3L,
+                                 randomization = "matched")
+ep <- estimate_effects(tr_p$data$y, tr_p$treatment, tr_p$tuples,
+                       2L, method = "paired")
+expect_equal((ep$ci_upper - ep$estimate) / ep$se,
+             rep(qt(0.975, 24), 3),
+  info = "paired CI half-width uses t_{M-1} with M = 25")
+tr_s <- generate_factorial_trial(n = 100, p_covariates = 3L,
+                                 randomization = "simple")
+ea <- estimate_effects(tr_s$data$y, tr_s$treatment, NULL, 2L,
+  covariates = as.matrix(tr_s$data[, c("X1", "X2", "X3")]))
+eu <- estimate_effects(tr_s$data$y, tr_s$treatment, NULL, 2L)
+expect_true(all(is.finite(ea$se)) && !identical(ea$estimate,
+                                                 eu$estimate),
+  info = "Lin adjustment also applies to unmatched designs")

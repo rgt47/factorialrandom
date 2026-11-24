@@ -4,16 +4,30 @@
 ## for 2x2 factorial designs
 ## ──────────────────────────────────────────────────────────
 
-library(factorialrandom)
+## Usage (from the package root):
+##   Rscript analysis/scripts/01_run_simulation.R [n_reps] [n_cores]
+## Defaults: n_reps = 2000, n_cores = 1. The package is loaded
+## from source with pkgload so that the run uses the R/ code in
+## this repository, not a possibly stale installed copy.
+
+if (file.exists("DESCRIPTION")) {
+  pkgload::load_all(".", quiet = TRUE)
+} else {
+  library(factorialrandom)
+}
 library(MASS)
 library(parallel)
 
-# Morris, White, and Crowther (2019) §5.3 sample-size justification:
-# for rejection-rate MCSE <= 1.0 pp at p = 0.5, n_replicates >= 2500.
-# At p = 0.025 (Type I error under null), MCSE = 0.0035 at 2000 reps,
-# acceptable for the present scope. The choice n_replicates = 2000
-# is documented here.
-n_replicates <- 2000L
+args <- commandArgs(trailingOnly = TRUE)
+
+# Morris, White, and Crowther (2019) sec. 5.3: the MCSE of a
+# rejection rate p is sqrt(p (1 - p) / n_reps). At p = 0.5 an
+# MCSE <= 1 percentage point needs n_reps >= 2500; 2000 reps give
+# 1.1 points. At p = 0.05 (nominal type I error of a two-sided
+# 0.05 test) 2000 reps give an MCSE of 0.49 points.
+n_replicates <- if (length(args) >= 1) as.integer(args[1]) else 2000L
+n_cores <- if (length(args) >= 2) as.integer(args[2]) else 1L
+base_seed <- 20260312L
 n_factors <- 2L
 k <- 2^n_factors
 sigma_y <- 1
@@ -90,7 +104,10 @@ run_one_replicate <- function(scenario, method_label) {
     NULL
   }
 
-  eff_adj <- if (!is.null(trial$tuples)) {
+  # Lin regression adjustment for every design, so that the
+  # adjusted matched designs can be compared with Lin-adjusted
+  # unmatched designs.
+  eff_adj <- {
     cov_mat <- as.matrix(dat[, cov_names, drop = FALSE])
     estimate_effects(
       outcome = dat$y,
@@ -100,8 +117,6 @@ run_one_replicate <- function(scenario, method_label) {
       covariates = cov_mat,
       method = "neyman"
     )
-  } else {
-    NULL
   }
 
   results <- data.frame(
@@ -291,23 +306,34 @@ cat(sprintf(
   nrow(scenarios) * length(randomization_methods)
 ))
 
-# Morris, White, and Crowther (2019) §4.1: pin RNGkind and set the
-# seed ONCE at the start of the program. Per-replicate `.Random.seed`
-# captures are stored on the result object below.
+# Morris, White, and Crowther (2019) sec. 4.1: pin RNGkind and
+# seed deterministically. Each scenario-method condition gets its
+# own seed (base_seed + condition index), set inside the worker,
+# so any condition can be rerun alone and results do not depend
+# on n_cores. Per-replicate `.Random.seed` states are not stored.
 RNGkind("L'Ecuyer-CMRG")
-set.seed(20260312)
 
-all_results <- vector("list",
-  nrow(scenarios) * length(randomization_methods)
+conditions <- expand.grid(
+  m = randomization_methods,
+  s = seq_len(nrow(scenarios)),
+  stringsAsFactors = FALSE
 )
-idx <- 0L
+conditions$seed <- base_seed + seq_len(nrow(conditions))
 
-for (s in seq_len(nrow(scenarios))) {
-  for (m in randomization_methods) {
-    idx <- idx + 1L
-    all_results[[idx]] <- run_condition(s, m)
-  }
+run_seeded <- function(i) {
+  set.seed(conditions$seed[i], kind = "L'Ecuyer-CMRG")
+  run_condition(conditions$s[i], conditions$m[i])
 }
+
+t_start <- Sys.time()
+all_results <- parallel::mclapply(
+  seq_len(nrow(conditions)), run_seeded,
+  mc.cores = n_cores, mc.preschedule = FALSE
+)
+cat(sprintf("Elapsed: %.1f min\n",
+  as.numeric(difftime(Sys.time(), t_start, units = "mins"))))
+failed <- vapply(all_results, inherits, logical(1), "try-error")
+stopifnot(!any(failed))
 
 raw_results <- do.call(rbind,
   all_results[!vapply(all_results, is.null, logical(1))]

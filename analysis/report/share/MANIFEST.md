@@ -5,3 +5,8 @@
 | Staged PDF | Source | Version | Rendered |
 |---|---|---|---|
 | `report-2026-08-15-1643-3839f48.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `3839f48` | 2026-08-15 16:43 PDT |
+| `report-2026-11-19-1357-dee2dc1-wip.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `dee2dc1-wip` | 2026-11-19 13:57 PST |
+| `report-2026-11-19-2056-dee2dc1-wip.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `dee2dc1-wip` | 2026-11-19 20:56 PST |
+| `report-2026-11-23-1250-dee2dc1-wip.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `dee2dc1-wip` | 2026-11-23 12:50 PST |
+| `report-2026-11-23-1250-dee2dc1-wip.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `dee2dc1-wip` | 2026-11-23 12:50 PST |
+| `report-2026-11-23-1253-dee2dc1-wip.pdf` | `~/prj/res/16-factorial-matched-random/factorialrandom/analysis/report/report.Rmd` | `dee2dc1-wip` | 2026-11-23 12:53 PST |
